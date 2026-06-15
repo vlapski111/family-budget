@@ -515,6 +515,43 @@
 </div>
 
 <!-- ══════════════════════════════════════════
+     SETUP: APP INFO
+══════════════════════════════════════════ -->
+<div id="setup-appinfo" class="screen" style="padding:0;overflow-y:auto">
+  <div class="setup-wrap" style="justify-content:flex-start;padding-top:52px;padding-bottom:40px;gap:20px">
+    <div>
+      <div class="setup-logo">family.budget</div>
+      <div class="setup-title">Here's what's set up for you.</div>
+      <div class="setup-sub" style="margin-top:8px">One quick read before we finish.</div>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">🔒 Privacy & hosting</div>
+      This app lives on a private GitHub account under Voytek's profile. It looks like a website but <strong style="color:var(--text)">only you and Voytek can access it</strong> — it is not public.
+    </div>
+
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">📁 Your folders in OneDrive</div>
+      🏠 <strong style="color:var(--text)">Shared family folder</strong> — household spending visible to both of you.<br><br>
+      👤 <strong style="color:var(--text)">Your private folder</strong> — on your OneDrive only. Voytek cannot see it. Optional: use it to track your own personal spending with your own dashboard. Already set up — ask Voytek when you're ready to enable it.<br><br>
+      Voytek has his own private folder too — you can't see his either. We each track our own separately, and shared spending together.
+    </div>
+
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">📱 Lock behaviour</div>
+      The app <strong style="color:var(--text)">won't lock if you briefly switch apps</strong> — it gives you a 30-second grace period. It only locks after <strong style="color:var(--text)">2 minutes of inactivity</strong> or when fully closed. You can change this anytime in Settings.
+    </div>
+
+    <div style="font-size:12px;color:var(--text2);text-align:center">You can access this info anytime via the ℹ️ icon on the home screen.</div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="btn-ghost" style="flex:1" onclick="showScreen('setup-security')">← Back</button>
+      <button class="btn-primary" style="flex:2" onclick="setupAppInfoNext()">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
      SETUP: PIN
 ══════════════════════════════════════════ -->
 <div id="setup-pin" class="screen">
@@ -878,8 +915,12 @@ function selectSecurity(level, el) {
 function setupSecurityNext() {
   if (!selectedSecurity) return;
   state.securityLevel = selectedSecurity;
-  if (selectedSecurity === 'none') {
-    // Skip PIN for no-lock
+  // Always show app info screen after security selection
+  showScreen('setup-appinfo');
+}
+
+function setupAppInfoNext() {
+  if (state.securityLevel === 'none') {
     state.pin = '';
     finishSetup();
   } else {

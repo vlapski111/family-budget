@@ -3,7 +3,7 @@
   "short_name": "Receipt",
   "description": "Quick receipt photo capture",
   "start_url": "/family-budget/capture.html",
-  "scope": "/family-budget/",
+  "scope": "/family-budget/capture.html",
   "display": "standalone",
   "background_color": "#0a0a14",
   "theme_color": "#00e5a0",

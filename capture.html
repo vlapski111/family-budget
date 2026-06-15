@@ -239,6 +239,11 @@
   <span class="cam-label">TAP TO CAPTURE</span>
 </button>
 
+<!-- Gallery picker button -->
+<button onclick="pickFromGallery()" style="background:var(--surface2);border:1.5px solid #2a2a40;border-radius:12px;padding:13px 24px;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:16px;transition:border-color 0.2s">
+  🖼️ Pick from gallery
+</button>
+
 <button class="multi-btn" id="multi-btn" onclick="toggleMulti()">
   <div class="multi-dot"></div>
   Add multiple receipts
@@ -258,6 +263,7 @@
 </div>
 
 <input type="file" id="file-input" accept="image/*" capture="environment" onchange="photoTaken(this)">
+<input type="file" id="gallery-input" accept="image/*" multiple onchange="photoTaken(this)">
 
 <div class="toast" id="toast">✓ Receipt captured</div>
 
@@ -280,6 +286,12 @@ function toggleMulti() {
 
 function captureReceipt() {
   const input = document.getElementById('file-input');
+  input.value = '';
+  input.click();
+}
+
+function pickFromGallery() {
+  const input = document.getElementById('gallery-input');
   input.value = '';
   input.click();
 }
