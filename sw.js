@@ -1,17 +1,16 @@
-// Family Budget PWA - Service Worker
-// Enables offline use and fast loading
-
-const CACHE_NAME = 'family-budget-v1';
+const CACHE = 'family-budget-v3';
+const BASE = '/family-budget/';
 const ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'icon-192.png',
+  BASE + 'icon-512.png',
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE).then(c => c.addAll(ASSETS))
   );
   self.skipWaiting();
 });
@@ -19,13 +18,21 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // For navigation requests, always serve index.html
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      caches.match(BASE + 'index.html').then(r => r || fetch(e.request))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
