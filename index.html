@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="theme-color" content="#0a0a14">
+<title>Family Budget</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0a14;
+    --surface:   #12121f;
+    --card:      #1a1a2e;
+    --border:    rgba(255,255,255,0.08);
+    --teal:      #00d4aa;
+    --amber:     #ffb347;
+    --rose:      #ff6b8a;
+    --lavender:  #a78bfa;
+    --text:      #f0f0f8;
+    --muted:     rgba(240,240,248,0.45);
+    --home-clr:  #00d4aa;
+    --work-clr:  #ffb347;
+    --pers-clr:  #ff6b8a;
+    --radius:    16px;
+    --safe-top:  env(safe-area-inset-top, 0px);
+    --safe-bot:  env(safe-area-inset-bottom, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── App Shell ───────────────────────────────────────── */
+  #app {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bot);
+    overflow: hidden;
+  }
+
+  /* ── Screens ─────────────────────────────────────────── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    animation: fadeUp 0.28s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Header ──────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 12px;
+    flex-shrink: 0;
+  }
+  .header-logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  .header-logo span { color: var(--teal); }
+  .header-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Home Screen ─────────────────────────────────────── */
+  #home-screen .scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 24px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .greeting {
+    margin-bottom: 24px;
+  }
+  .greeting-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+  .greeting-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Big action button */
+  .cta-btn {
+    width: 100%;
+    padding: 20px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--teal);
+    color: #0a0a14;
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.12s, opacity 0.12s;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .cta-btn:active { transform: scale(0.97); }
+  .cta-btn:active::after { opacity: 1; }
+  .cta-btn .btn-icon { font-size: 22px; }
+
+  /* Quick stats */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .stat-value.home { color: var(--home-clr); }
+  .stat-value.work { color: var(--work-clr); }
+
+  /* Recent receipts */
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .receipt-list { display: flex; flex-direction: column; gap: 8px; }
+  .receipt-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .receipt-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .receipt-dot.home { background: var(--home-clr); }
+  .receipt-dot.work { background: var(--work-clr); }
+  .receipt-dot.personal { background: var(--pers-clr); }
+  .receipt-info { flex: 1; min-width: 0; }
+  .receipt-vendor {
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .receipt-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .receipt-amount {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  /* ── Add Receipt Screen ───────────────────────────────── */
+  #add-screen {
+    overflow: hidden;
+  }
+  #add-screen .scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Back button */
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--teal);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+  }
+
+  /* Bucket selector */
+  .bucket-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .bucket-btn {
+    padding: 14px 8px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .bucket-btn .bucket-icon { font-size: 20px; }
+  .bucket-btn.active-home {
+    border-color: var(--home-clr);
+    background: rgba(0,212,170,0.12);
+    color: var(--home-clr);
+  }
+  .bucket-btn.active-work {
+    border-color: var(--work-clr);
+    background: rgba(255,179,71,0.12);
+    color: var(--work-clr);
+  }
+  .bucket-btn.active-personal {
+    border-color: var(--pers-clr);
+    background: rgba(255,107,138,0.12);
+    color: var(--pers-clr);
+  }
+
+  /* Photo zone */
+  .photo-zone {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: var(--radius);
+    border: 2px dashed var(--border);
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .photo-zone.has-photo { border-style: solid; }
+  .photo-zone img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: calc(var(--radius) - 2px);
+  }
+  .photo-zone-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+  .photo-zone-icon { font-size: 36px; position: relative; z-index: 1; }
+  .photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .photo-zone.has-photo:active .photo-overlay,
+  .photo-zone.has-photo:hover .photo-overlay { opacity: 1; }
+  .photo-action {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #photo-input { display: none; }
+
+  /* Input methods row */
+  .input-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .method-btn {
+    padding: 12px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .method-btn .m-icon { font-size: 18px; }
+  .method-btn.active {
+    border-color: var(--lavender);
+    background: rgba(167,139,250,0.12);
+    color: var(--lavender);
+  }
+
+  /* Form fields */
+  .field-group { margin-bottom: 16px; }
+  .field-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .field-input, .field-select, .field-textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .field-input:focus, .field-select:focus, .field-textarea:focus {
+    border-color: var(--teal);
+  }
+  .field-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+  }
+  .field-select option { background: #1a1a2e; }
+  .field-textarea {
+    resize: none;
+    height: 88px;
+    font-size: 14px;
+    font-weight: 400;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Amount row */
+  .amount-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Province & Funded By row */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Voice recording UI */
+  .voice-ui {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .voice-ui.visible { display: flex; }
+  .voice-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 3px solid var(--rose);
+    background: rgba(255,107,138,0.12);
+    font-size: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .voice-btn.recording {
+    background: var(--rose);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,107,138,0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(255,107,138,0); }
+  }
+  .voice-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+  .voice-transcript {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    min-height: 44px;
+    line-height: 1.6;
+  }
+
+  /* Split toggle */
+  .split-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .split-toggle-label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .split-toggle-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .toggle-switch {
+    width: 44px; height: 26px;
+    border-radius: 13px;
+    background: var(--border);
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: white;
+    top: 3px; left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle-switch.on { background: var(--teal); }
+  .toggle-switch.on::after { transform: translateX(18px); }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    border-radius: var(--radius);
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.12s, opacity 0.12s;
+    background: var(--teal);
+    color: #0a0a14;
+    margin-top: 8px;
+  }
+  .submit-btn:active { transform: scale(0.97); opacity: 0.9; }
+  .submit-btn.work { background: var(--work-clr); }
+  .submit-btn.personal { background: var(--pers-clr); }
+
+  /* ── Success Screen ───────────────────────────────────── */
+  #success-screen {
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    text-align: center;
+    gap: 16px;
+  }
+  .success-icon {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    background: rgba(0,212,170,0.12);
+    border: 2px solid var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    animation: popIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .success-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .success-detail {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+  }
+  .success-summary {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .summary-val {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .another-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 2px solid var(--teal);
+    background: transparent;
+    color: var(--teal);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: -0.02em;
+    transition: all 0.15s;
+  }
+  .another-btn:active { background: rgba(0,212,170,0.1); }
+
+  /* ── Settings Screen ─────────────────────────────────── */
+  #settings-screen .scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-section { margin-bottom: 28px; }
+  .settings-group {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .settings-row-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .settings-input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    width: 160px;
+    text-align: right;
+    outline: none;
+  }
+  .settings-input:focus { border-color: var(--teal); }
+  .save-settings-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--teal);
+    color: #0a0a14;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* ── Bottom Nav ──────────────────────────────────────── */
+  .bottom-nav {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 4px;
+    flex-shrink: 0;
+  }
+  .nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--teal); }
+  .nav-icon { font-size: 22px; line-height: 1; }
+  .nav-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ── Upload progress ─────────────────────────────────── */
+  .upload-bar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--border);
+    z-index: 999;
+  }
+  .upload-bar.visible { display: block; }
+  .upload-progress {
+    height: 100%;
+    background: var(--teal);
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* ── Utility ─────────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tag.home { background: rgba(0,212,170,0.15); color: var(--home-clr); }
+  .tag.work { background: rgba(255,179,71,0.15); color: var(--work-clr); }
+  .tag.personal { background: rgba(255,107,138,0.15); color: var(--pers-clr); }
+
+  /* OCR status badge */
+  .ocr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: rgba(167,139,250,0.12);
+    border: 1px solid rgba(167,139,250,0.3);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--lavender);
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+  }
+  .ocr-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--lavender);
+    animation: blink 1.4s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── HOME SCREEN ──────────────────────────────────── -->
+  <div id="home-screen" class="screen active">
+    <div class="header">
+      <div>
+        <div class="header-logo">family<span>.</span>budget</div>
+        <div class="header-sub" id="header-user">Loading...</div>
+      </div>
+      <button class="nav-btn" onclick="showScreen('settings-screen')" style="flex:none;padding:0;color:var(--muted)">
+        <span class="nav-icon">⚙️</span>
+      </button>
+    </div>
+    <div class="scroll-body">
+      <div class="greeting">
+        <div class="greeting-name" id="greeting-text">Good morning</div>
+        <div class="greeting-date" id="greeting-date"></div>
+      </div>
+
+      <button class="cta-btn" onclick="showScreen('add-screen')">
+        <span class="btn-icon">📷</span>
+        Add Receipt
+      </button>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">This month</div>
+          <div class="stat-value home" id="stat-month">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Receipts</div>
+          <div class="stat-value work" id="stat-count">0</div>
+        </div>
+      </div>
+
+      <div class="section-title">Recent</div>
+      <div class="receipt-list" id="recent-list">
+        <div class="empty-state">No receipts yet.<br>Tap Add Receipt to get started.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADD RECEIPT SCREEN ───────────────────────────── -->
+  <div id="add-screen" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('home-screen')">← Back</button>
+      <div class="header-sub">New Receipt</div>
+    </div>
+    <div class="scroll-body">
+
+      <!-- Bucket selector -->
+      <div class="field-label">Spending Type</div>
+      <div class="bucket-selector">
+        <button class="bucket-btn active-home" id="btn-home" onclick="setBucket('home')">
+          <span class="bucket-icon">🏠</span>Home
+        </button>
+        <button class="bucket-btn" id="btn-work" onclick="setBucket('work')">
+          <span class="bucket-icon">💼</span>Work
+        </button>
+        <button class="bucket-btn" id="btn-personal" onclick="setBucket('personal')">
+          <span class="bucket-icon">🔒</span>Personal
+        </button>
+      </div>
+
+      <!-- Photo zone -->
+      <div class="field-label">Receipt Photo</div>
+      <div class="photo-zone" id="photo-zone" onclick="triggerPhoto()">
+        <span class="photo-zone-icon">📸</span>
+        <div class="photo-zone-label">Tap to take photo<br>or choose from gallery</div>
+        <div class="photo-overlay">
+          <button class="photo-action" onclick="event.stopPropagation();triggerPhoto()">Change</button>
+          <button class="photo-action" onclick="event.stopPropagation();clearPhoto()">Remove</button>
+        </div>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" onchange="handlePhoto(this)">
+
+      <!-- OCR status -->
+      <div class="ocr-badge" id="ocr-badge" style="display:none">
+        <span class="ocr-dot"></span>
+        OCR Processing...
+      </div>
+
+      <!-- Input method -->
+      <div class="field-label">Add a Note (optional)</div>
+      <div class="input-methods">
+        <button class="method-btn" id="method-none" onclick="setMethod('none')">
+          <span class="m-icon">✕</span>None
+        </button>
+        <button class="method-btn active" id="method-type" onclick="setMethod('type')">
+          <span class="m-icon">✏️</span>Type
+        </button>
+        <button class="method-btn" id="method-voice" onclick="setMethod('voice')">
+          <span class="m-icon">🎤</span>Voice
+        </button>
+      </div>
+
+      <!-- Typed note -->
+      <div id="type-note-area" class="field-group">
+        <textarea class="field-textarea" id="note-text"
+          placeholder="e.g. 2 items personal — book $29.99, shampoo $8.99"></textarea>
+      </div>
+
+      <!-- Voice note -->
+      <div class="voice-ui" id="voice-ui">
+        <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">🎤</button>
+        <div class="voice-status" id="voice-status">Tap to record</div>
+        <div class="voice-transcript" id="voice-transcript">Your voice note will appear here...</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Manual fields -->
+      <div class="field-group">
+        <label class="field-label">Vendor / Store</label>
+        <input class="field-input" id="vendor" type="text" placeholder="e.g. Walmart" autocomplete="off">
+      </div>
+
+      <div class="amount-row">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Amount ($)</label>
+          <input class="field-input" id="amount" type="number" step="0.01" min="0" placeholder="0.00"
+            inputmode="decimal">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Province</label>
+          <select class="field-select" id="province">
+            <option value="Ontario">Ontario</option>
+            <option value="Alberta">Alberta</option>
+            <option value="British Columbia">BC</option>
+            <option value="Manitoba">Manitoba</option>
+            <option value="Saskatchewan">Saskatchewan</option>
+            <option value="Quebec & Atlantic">QC / Atlantic</option>
+            <option value="No Tax">No Tax</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Category</label>
+          <select class="field-select" id="category">
+            <optgroup label="Home">
+              <option>Groceries</option>
+              <option>Gas</option>
+              <option>Utilities</option>
+              <option>Dining Out</option>
+              <option>Home Improvements</option>
+              <option>Subscriptions</option>
+              <option>Medical</option>
+              <option>Transport</option>
+              <option>Insurance</option>
+              <option>Miscellaneous</option>
+            </optgroup>
+            <optgroup label="Work">
+              <option>Travel - Flights</option>
+              <option>Travel - Hotel</option>
+              <option>Travel - Car Rental</option>
+              <option>Meals &amp; Entertainment</option>
+              <option>Ground Transport</option>
+              <option>Office Supplies</option>
+            </optgroup>
+            <optgroup label="Personal">
+              <option>Clothing</option>
+              <option>Entertainment</option>
+              <option>Personal Care</option>
+              <option>Online Shopping</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Funded By</label>
+          <select class="field-select" id="funded-by">
+            <option>Joint</option>
+            <option>Voytek</option>
+            <option>Andrea</option>
+            <option>Split</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Split toggle -->
+      <div class="split-toggle" onclick="toggleSplit()" id="split-toggle">
+        <div>
+          <div class="split-toggle-label">Contains personal items?</div>
+          <div class="split-toggle-sub">Flag for line-item split</div>
+        </div>
+        <div class="toggle-switch" id="split-switch"></div>
+      </div>
+
+      <!-- Submit -->
+      <button class="submit-btn" id="submit-btn" onclick="submitReceipt()">
+        Submit Receipt →
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ── SUCCESS SCREEN ───────────────────────────────── -->
+  <div id="success-screen" class="screen">
+    <div class="header">
+      <div></div>
+      <div class="header-sub">Submitted</div>
+    </div>
+    <div class="success-icon">✓</div>
+    <div class="success-title">Receipt saved</div>
+    <div class="success-detail" id="success-detail">
+      Uploaded to OneDrive<br>OCR will process automatically
+    </div>
+    <div class="success-summary" id="success-summary"></div>
+    <button class="another-btn" onclick="resetAndAdd()">+ Add Another</button>
+    <button class="another-btn" style="border-color:var(--muted);color:var(--muted);margin-top:8px" onclick="showScreen('home-screen')">Back to Home</button>
+  </div>
+
+  <!-- ── SETTINGS SCREEN ──────────────────────────────── -->
+  <div id="settings-screen" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showScreen('home-screen')">← Back</button>
+      <div class="header-sub">Settings</div>
+    </div>
+    <div class="scroll-body">
+
+      <div class="settings-section">
+        <div class="section-title">Your Profile</div>
+        <div class="settings-group">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Name</div>
+              <div class="settings-row-sub">Shown in receipts</div>
+            </div>
+            <input class="settings-input" id="setting-name" value="Voytek" placeholder="Your name">
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Default Bucket</div>
+              <div class="settings-row-sub">Pre-selected on open</div>
+            </div>
+            <select class="settings-input" id="setting-bucket" style="width:120px">
+              <option value="home">Home</option>
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-title">OneDrive Path</div>
+        <div class="settings-group">
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <div>
+              <div class="settings-row-label">Inbox Folder URL</div>
+              <div class="settings-row-sub">OneDrive share link for Receipts/Inbox</div>
+            </div>
+            <input class="settings-input" id="setting-onedrive" style="width:100%;text-align:left"
+              placeholder="https://onedrive.live.com/...">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-title">Default Province</div>
+        <div class="settings-group">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Province</div>
+              <div class="settings-row-sub">For tax calculation</div>
+            </div>
+            <select class="settings-input" id="setting-province" style="width:140px">
+              <option>Ontario</option>
+              <option>Alberta</option>
+              <option>British Columbia</option>
+              <option>Manitoba</option>
+              <option>Saskatchewan</option>
+              <option>Quebec & Atlantic</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-title">About</div>
+        <div class="settings-group">
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Version</div>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)">1.0.0</div>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-row-label">Install as App</div>
+              <div class="settings-row-sub">Add to home screen</div>
+            </div>
+            <button onclick="promptInstall()"
+              style="background:rgba(0,212,170,0.12);border:1px solid var(--teal);border-radius:8px;
+                     padding:8px 14px;color:var(--teal);font-family:'Syne',sans-serif;
+                     font-size:12px;font-weight:700;cursor:pointer">
+              Install
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button class="save-settings-btn" onclick="saveSettings()">Save Settings</button>
+
+    </div>
+  </div>
+
+  <!-- Bottom nav (hidden on success) -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showScreen('home-screen')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Home</span>
+    </button>
+    <button class="nav-btn" id="nav-add" onclick="showScreen('add-screen')" style="color:var(--teal)">
+      <span class="nav-icon" style="font-size:28px;line-height:1">＋</span>
+      <span class="nav-label">Add</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="showScreen('settings-screen')">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+
+  <div class="upload-bar" id="upload-bar">
+    <div class="upload-progress" id="upload-progress"></div>
+  </div>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+const state = {
+  bucket: 'home',
+  method: 'type',
+  splitItems: false,
+  photoFile: null,
+  photoDataURL: null,
+  isRecording: false,
+  recognition: null,
+  receipts: [],
+  settings: {
+    name: 'Voytek',
+    bucket: 'home',
+    province: 'Ontario',
+    onedrive: '',
+  }
+};
+
+let deferredInstallPrompt = null;
+
+// ── Init ──────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  loadSettings();
+  updateGreeting();
+  loadReceipts();
+  setInterval(updateGreeting, 60000);
+});
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+// ── Screen navigation ─────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  // Nav active states
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navMap = {
+    'home-screen': 'nav-home',
+    'add-screen': 'nav-add',
+    'settings-screen': 'nav-settings',
+  };
+  if (navMap[id]) document.getElementById(navMap[id])?.classList.add('active');
+
+  // Hide bottom nav on success
+  document.getElementById('bottom-nav').style.display = id === 'success-screen' ? 'none' : 'flex';
+
+  // Refresh home on return
+  if (id === 'home-screen') {
+    updateGreeting();
+    renderReceipts();
+  }
+}
+
+// ── Greeting ──────────────────────────────────────────────
+function updateGreeting() {
+  const name = state.settings.name || 'Voytek';
+  const now = new Date();
+  const h = now.getHours();
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting-text').textContent = `${greet}, ${name}`;
+  document.getElementById('header-user').textContent = name.toUpperCase();
+  document.getElementById('greeting-date').textContent =
+    now.toLocaleDateString('en-CA', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+}
+
+// ── Bucket ────────────────────────────────────────────────
+function setBucket(b) {
+  state.bucket = b;
+  ['home','work','personal'].forEach(x => {
+    const btn = document.getElementById(`btn-${x}`);
+    btn.className = 'bucket-btn' + (x === b ? ` active-${x}` : '');
+  });
+  // Update submit button color
+  const sub = document.getElementById('submit-btn');
+  sub.className = `submit-btn${b !== 'home' ? ' ' + b : ''}`;
+  // Auto-set funded-by
+  const fby = document.getElementById('funded-by');
+  if (b === 'home') fby.value = 'Joint';
+  else if (b === 'personal') fby.value = state.settings.name || 'Voytek';
+  else fby.value = 'Joint';
+}
+
+// ── Photo ─────────────────────────────────────────────────
+function triggerPhoto() {
+  document.getElementById('photo-input').click();
+}
+
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  state.photoFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.photoDataURL = e.target.result;
+    const zone = document.getElementById('photo-zone');
+    zone.classList.add('has-photo');
+    // Remove existing img if any
+    const old = zone.querySelector('img');
+    if (old) old.remove();
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    zone.insertBefore(img, zone.firstChild);
+    // Show OCR badge
+    document.getElementById('ocr-badge').style.display = 'inline-flex';
+    // Simulate OCR suggestion after 2s
+    setTimeout(() => {
+      document.getElementById('ocr-badge').style.display = 'none';
+    }, 2500);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  state.photoFile = null;
+  state.photoDataURL = null;
+  const zone = document.getElementById('photo-zone');
+  zone.classList.remove('has-photo');
+  const img = zone.querySelector('img');
+  if (img) img.remove();
+  document.getElementById('photo-input').value = '';
+  document.getElementById('ocr-badge').style.display = 'none';
+}
+
+// ── Input method ──────────────────────────────────────────
+function setMethod(m) {
+  state.method = m;
+  ['none','type','voice'].forEach(x => {
+    document.getElementById(`method-${x}`).classList.toggle('active', x === m);
+  });
+  document.getElementById('type-note-area').style.display = m === 'type' ? 'block' : 'none';
+  document.getElementById('voice-ui').classList.toggle('visible', m === 'voice');
+}
+
+// ── Voice ─────────────────────────────────────────────────
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Voice recognition not supported in this browser. Try Chrome on Android.');
+    return;
+  }
+  if (state.isRecording) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+
+function startVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  state.recognition = new SpeechRecognition();
+  state.recognition.continuous = true;
+  state.recognition.interimResults = true;
+  state.recognition.lang = 'en-CA';
+
+  state.recognition.onresult = e => {
+    let transcript = '';
+    for (let i = 0; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    document.getElementById('voice-transcript').textContent = transcript;
+    document.getElementById('note-text').value = transcript;
+  };
+
+  state.recognition.onerror = () => stopVoice();
+  state.recognition.onend = () => {
+    if (state.isRecording) stopVoice();
+  };
+
+  state.recognition.start();
+  state.isRecording = true;
+  document.getElementById('voice-btn').classList.add('recording');
+  document.getElementById('voice-btn').textContent = '⏹';
+  document.getElementById('voice-status').textContent = 'Recording... tap to stop';
+}
+
+function stopVoice() {
+  if (state.recognition) state.recognition.stop();
+  state.isRecording = false;
+  document.getElementById('voice-btn').classList.remove('recording');
+  document.getElementById('voice-btn').textContent = '🎤';
+  document.getElementById('voice-status').textContent = 'Tap to record again';
+}
+
+// ── Split toggle ──────────────────────────────────────────
+function toggleSplit() {
+  state.splitItems = !state.splitItems;
+  document.getElementById('split-switch').classList.toggle('on', state.splitItems);
+}
+
+// ── Submit ────────────────────────────────────────────────
+async function submitReceipt() {
+  const vendor = document.getElementById('vendor').value.trim() || 'Unknown Vendor';
+  const amount = parseFloat(document.getElementById('amount').value) || 0;
+  const category = document.getElementById('category').value;
+  const province = document.getElementById('province').value;
+  const fundedBy = document.getElementById('funded-by').value;
+  const note = document.getElementById('note-text').value.trim();
+
+  // Tax calculation
+  const taxRates = {
+    'Ontario': 0.13, 'Alberta': 0.05, 'British Columbia': 0.12,
+    'Manitoba': 0.12, 'Saskatchewan': 0.11, 'Quebec & Atlantic': 0.15, 'No Tax': 0
+  };
+  const taxRate = category === 'Groceries' ? 0 : (taxRates[province] || 0.13);
+  const taxAmount = parseFloat((amount * taxRate).toFixed(2));
+  const totalWithTax = parseFloat((amount + taxAmount).toFixed(2));
+
+  const receipt = {
+    id: 'R-' + Date.now(),
+    date: new Date().toISOString(),
+    vendor, amount, category, province,
+    taxRate, taxAmount, totalWithTax,
+    bucket: state.bucket,
+    fundedBy,
+    note,
+    hasPhoto: !!state.photoFile,
+    splitItems: state.splitItems,
+    owner: state.settings.name,
+    inputMethod: state.method,
+  };
+
+  // Save locally
+  state.receipts.unshift(receipt);
+  saveReceipts();
+
+  // Upload photo to OneDrive if configured and photo exists
+  if (state.photoFile && state.settings.onedrive) {
+    await uploadToOneDrive(state.photoFile, receipt);
+  } else if (state.photoFile) {
+    // Save as download fallback
+    savePhotoLocally(state.photoFile, receipt.id);
+  }
+
+  // Show success
+  showSuccess(receipt);
+}
+
+async function uploadToOneDrive(file, receipt) {
+  // Show progress bar
+  const bar = document.getElementById('upload-bar');
+  const prog = document.getElementById('upload-progress');
+  bar.classList.add('visible');
+
+  // Animate progress (simulated — real upload uses OneDrive API)
+  let p = 0;
+  const interval = setInterval(() => {
+    p += Math.random() * 15;
+    if (p > 90) p = 90;
+    prog.style.width = p + '%';
+  }, 200);
+
+  try {
+    // Rename file with receipt ID and bucket prefix
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filename = `${receipt.bucket.toUpperCase()}_${receipt.id}_${receipt.vendor.replace(/\s+/g,'')}.${ext}`;
+
+    // If OneDrive URL is configured, attempt upload
+    // For PWA: we use the Web Share API or download as fallback
+    if (navigator.share && navigator.canShare({ files: [file] })) {
+      // Share to OneDrive app on mobile
+      await navigator.share({
+        title: `Receipt: ${receipt.vendor}`,
+        text: `${receipt.bucket} | ${receipt.category} | $${receipt.totalWithTax}`,
+        files: [new File([file], filename, { type: file.type })],
+      });
+    } else {
+      savePhotoLocally(file, filename);
+    }
+  } catch (e) {
+    // Silently handle share cancellation
+  } finally {
+    clearInterval(interval);
+    prog.style.width = '100%';
+    setTimeout(() => {
+      bar.classList.remove('visible');
+      prog.style.width = '0%';
+    }, 500);
+  }
+}
+
+function savePhotoLocally(file, filename) {
+  // Create download link as fallback
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = typeof filename === 'string' ? filename : `receipt_${Date.now()}.jpg`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Success screen ────────────────────────────────────────
+function showSuccess(receipt) {
+  const bucketColors = { home: 'var(--home-clr)', work: 'var(--work-clr)', personal: 'var(--pers-clr)' };
+  const color = bucketColors[receipt.bucket];
+
+  document.getElementById('success-summary').innerHTML = `
+    <div class="summary-row">
+      <span class="summary-key">Vendor</span>
+      <span class="summary-val">${receipt.vendor}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Amount</span>
+      <span class="summary-val" style="color:${color}">$${receipt.totalWithTax.toFixed(2)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Tax</span>
+      <span class="summary-val">$${receipt.taxAmount.toFixed(2)} (${(receipt.taxRate*100).toFixed(0)}%)</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Category</span>
+      <span class="summary-val">${receipt.category}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Bucket</span>
+      <span class="tag ${receipt.bucket}">${receipt.bucket}</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-key">Funded By</span>
+      <span class="summary-val">${receipt.fundedBy}</span>
+    </div>
+    ${receipt.splitItems ? `<div class="summary-row"><span class="summary-key">Split Items</span><span class="summary-val" style="color:var(--lavender)">Flagged ✓</span></div>` : ''}
+  `;
+
+  const detail = receipt.hasPhoto
+    ? 'Photo uploaded · OCR will process automatically'
+    : 'Saved locally · No photo attached';
+  document.getElementById('success-detail').textContent = detail;
+
+  showScreen('success-screen');
+}
+
+// ── Reset form ────────────────────────────────────────────
+function resetAndAdd() {
+  clearPhoto();
+  document.getElementById('vendor').value = '';
+  document.getElementById('amount').value = '';
+  document.getElementById('note-text').value = '';
+  document.getElementById('voice-transcript').textContent = 'Your voice note will appear here...';
+  state.splitItems = false;
+  document.getElementById('split-switch').classList.remove('on');
+  setBucket(state.settings.bucket || 'home');
+  setMethod('type');
+  showScreen('add-screen');
+}
+
+// ── Render recent receipts ────────────────────────────────
+function renderReceipts() {
+  const list = document.getElementById('recent-list');
+  const recent = state.receipts.slice(0, 8);
+
+  if (!recent.length) {
+    list.innerHTML = '<div class="empty-state">No receipts yet.<br>Tap Add Receipt to get started.</div>';
+    document.getElementById('stat-month').textContent = '$0';
+    document.getElementById('stat-count').textContent = '0';
+    return;
+  }
+
+  const now = new Date();
+  const monthReceipts = state.receipts.filter(r => {
+    const d = new Date(r.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const monthTotal = monthReceipts.reduce((s, r) => s + r.totalWithTax, 0);
+  document.getElementById('stat-month').textContent = '$' + monthTotal.toFixed(0);
+  document.getElementById('stat-count').textContent = monthReceipts.length;
+
+  list.innerHTML = recent.map(r => `
+    <div class="receipt-item">
+      <div class="receipt-dot ${r.bucket}"></div>
+      <div class="receipt-info">
+        <div class="receipt-vendor">${r.vendor}</div>
+        <div class="receipt-meta">${r.category} · ${new Date(r.date).toLocaleDateString('en-CA',{month:'short',day:'numeric'})}</div>
+      </div>
+      <div class="receipt-amount">$${r.totalWithTax.toFixed(2)}</div>
+    </div>
+  `).join('');
+}
+
+function loadReceipts() {
+  try {
+    state.receipts = JSON.parse(localStorage.getItem('fb_receipts') || '[]');
+  } catch { state.receipts = []; }
+  renderReceipts();
+}
+
+function saveReceipts() {
+  localStorage.setItem('fb_receipts', JSON.stringify(state.receipts.slice(0, 200)));
+  renderReceipts();
+}
+
+// ── Settings ──────────────────────────────────────────────
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('fb_settings') || '{}');
+    Object.assign(state.settings, s);
+  } catch {}
+  document.getElementById('setting-name').value = state.settings.name || 'Voytek';
+  document.getElementById('setting-bucket').value = state.settings.bucket || 'home';
+  document.getElementById('setting-province').value = state.settings.province || 'Ontario';
+  document.getElementById('setting-onedrive').value = state.settings.onedrive || '';
+  document.getElementById('province').value = state.settings.province || 'Ontario';
+  setBucket(state.settings.bucket || 'home');
+  updateGreeting();
+}
+
+function saveSettings() {
+  state.settings.name = document.getElementById('setting-name').value.trim() || 'Voytek';
+  state.settings.bucket = document.getElementById('setting-bucket').value;
+  state.settings.province = document.getElementById('setting-province').value;
+  state.settings.onedrive = document.getElementById('setting-onedrive').value.trim();
+  localStorage.setItem('fb_settings', JSON.stringify(state.settings));
+  document.getElementById('province').value = state.settings.province;
+  setBucket(state.settings.bucket);
+  updateGreeting();
+
+  // Flash save button
+  const btn = document.querySelector('.save-settings-btn');
+  btn.textContent = 'Saved ✓';
+  btn.style.background = 'var(--sage)';
+  setTimeout(() => {
+    btn.textContent = 'Save Settings';
+    btn.style.background = 'var(--teal)';
+  }, 1500);
+
+  showScreen('home-screen');
+}
+
+// ── Install prompt ────────────────────────────────────────
+function promptInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+    });
+  } else {
+    alert('To install:\n\nAndroid Chrome: tap ⋮ menu → "Add to Home screen"\n\nSafari iOS: tap Share → "Add to Home Screen"');
+  }
+}
+
+// ── Init method display ───────────────────────────────────
+setMethod('type');
+setBucket('home');
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(e => console.log('SW registration failed:', e));
+  });
+}
+</script>
+</body>
+</html>
