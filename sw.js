@@ -1,4 +1,4 @@
-const CACHE = 'family-budget-v3';
+const CACHE = 'family-budget-v4';
 const BASE = '/family-budget/';
 const ASSETS = [
   BASE,
@@ -9,9 +9,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
-  );
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
 
@@ -25,8 +23,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  // For navigation requests, always serve index.html
   if (e.request.mode === 'navigate') {
     e.respondWith(
       caches.match(BASE + 'index.html').then(r => r || fetch(e.request))
