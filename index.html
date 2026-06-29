@@ -298,6 +298,16 @@
   }
 
   .receipt-list { padding: 0 20px; flex: 1; }
+
+  /* ── DASHBOARD BARS ── */
+  .bar-row { margin-bottom: 14px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .bar-row-label { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .bar-row-amount { font-size: 14px; font-weight: 700; color: var(--text); }
+  .bar-row-pct { font-size: 11px; color: var(--text2); margin-left: 4px; }
+  .bar-track { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
   .empty-state {
     text-align: center; color: var(--text2);
     padding: 40px 20px; font-size: 15px; line-height: 1.6;
@@ -647,6 +657,17 @@
     <div class="stat-card">
       <div class="stat-label">Receipts</div>
       <div class="stat-value neutral" id="stat-count">0</div>
+    </div>
+  </div>
+
+  <div id="dashboard-section" style="padding:0 20px;margin-bottom:8px;display:none">
+    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;margin-bottom:12px">
+      <div class="section-title" style="padding:0;margin-bottom:14px">By Category</div>
+      <div id="category-bars"></div>
+    </div>
+    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;margin-bottom:4px">
+      <div class="section-title" style="padding:0;margin-bottom:14px">By Who Paid</div>
+      <div id="paidby-bars"></div>
     </div>
   </div>
 
@@ -1138,6 +1159,71 @@ function unlock() {
 // ══════════════════════════════════════════
 // HOME
 // ══════════════════════════════════════════
+function renderDashboard(receipts, total) {
+  const section = document.getElementById('dashboard-section');
+  if (!receipts || receipts.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const bucketMeta = {
+    home: { label: 'Home', icon: '🏠', color: '#00e5a0' },
+    work: { label: 'Work', icon: '💼', color: '#7c6af7' },
+    personal: { label: 'Personal', icon: '👤', color: '#ffb340' }
+  };
+  const paidMeta = {
+    'Joint': { color: '#00e5a0' },
+    'Split 50/50': { color: '#7c6af7' }
+  };
+
+  // Category totals
+  const catTotals = {};
+  receipts.forEach(r => {
+    const b = r.bucket || 'home';
+    catTotals[b] = (catTotals[b] || 0) + (parseFloat(r.amount) || 0);
+  });
+
+  const catHtml = Object.entries(catTotals)
+    .sort((a,b) => b[1] - a[1])
+    .map(([key, amt]) => {
+      const meta = bucketMeta[key] || { label: key, icon: '🧾', color: '#8888aa' };
+      const pct = total > 0 ? Math.round((amt/total)*100) : 0;
+      return `
+        <div class="bar-row">
+          <div class="bar-row-top">
+            <div class="bar-row-label">${meta.icon} ${meta.label}</div>
+            <div class="bar-row-amount">$${amt.toFixed(2)}<span class="bar-row-pct">${pct}%</span></div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${meta.color}"></div></div>
+        </div>`;
+    }).join('');
+  document.getElementById('category-bars').innerHTML = catHtml;
+
+  // Paid-by totals
+  const paidTotals = {};
+  receipts.forEach(r => {
+    const p = r.paid || 'Joint';
+    paidTotals[p] = (paidTotals[p] || 0) + (parseFloat(r.amount) || 0);
+  });
+
+  const paidHtml = Object.entries(paidTotals)
+    .sort((a,b) => b[1] - a[1])
+    .map(([key, amt]) => {
+      const color = (paidMeta[key] || {}).color || '#ff8fb0';
+      const pct = total > 0 ? Math.round((amt/total)*100) : 0;
+      return `
+        <div class="bar-row">
+          <div class="bar-row-top">
+            <div class="bar-row-label">${key}</div>
+            <div class="bar-row-amount">$${amt.toFixed(2)}<span class="bar-row-pct">${pct}%</span></div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+    }).join('');
+  document.getElementById('paidby-bars').innerHTML = paidHtml;
+}
+
 function updateHome() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -1152,6 +1238,8 @@ function updateHome() {
   const total = monthReceipts.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
   document.getElementById('stat-month').textContent = '$' + total.toFixed(2);
   document.getElementById('stat-count').textContent = (state.receipts||[]).length;
+
+  renderDashboard(monthReceipts, total);
 
   const list = document.getElementById('receipt-list');
   if (!state.receipts || state.receipts.length === 0) {
