@@ -1,15 +1,13 @@
-const CACHE = 'family-budget-v4';
-const BASE = '/family-budget/';
+const CACHE = 'receipt-capture-v2';
+const BASE = '/family-budget/capture/';
 const ASSETS = [
   BASE,
   BASE + 'index.html',
   BASE + 'manifest.json',
-  BASE + 'icon-192.png',
-  BASE + 'icon-512.png',
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(()=>{})));
   self.skipWaiting();
 });
 

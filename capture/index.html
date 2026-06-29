@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Receipt Capture</title>
-<link rel="manifest" href="capture-manifest.json">
+<link rel="manifest" href="manifest.json">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -363,7 +363,7 @@ function showToast(msg) {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./capture-sw.js').catch(e => console.log('SW:', e));
+  navigator.serviceWorker.register('./sw.js').catch(e => console.log('SW:', e));
 }
 </script>
 </body>

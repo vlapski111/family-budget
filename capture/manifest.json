@@ -1,12 +1,12 @@
 {
-  "name": "Family Budget",
-  "short_name": "Budget",
-  "description": "Family receipt tracking and budget management",
-  "start_url": "/family-budget/",
-  "scope": "/family-budget/",
+  "name": "Receipt Capture",
+  "short_name": "Capture",
+  "description": "Quick receipt photo capture",
+  "start_url": "/family-budget/capture/",
+  "scope": "/family-budget/capture/",
   "display": "standalone",
-  "background_color": "#0a0a14",
-  "theme_color": "#0a0a14",
+  "background_color": "#00e5a0",
+  "theme_color": "#00e5a0",
   "orientation": "portrait",
   "icons": [
     {
