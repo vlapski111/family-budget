@@ -2,1440 +2,1964 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a14">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <title>Family Budget</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
   :root {
     --bg: #0a0a14;
     --surface: #13131f;
-    --surface2: #1c1c2e;
-    --accent: #00e5a0;
-    --accent2: #7c6af7;
-    --text: #f0f0f5;
-    --text2: #8888aa;
-    --danger: #ff4f6d;
-    --warning: #ffb340;
-    --radius: 16px;
-    --radius-sm: 10px;
+    --surface-2: #1b1b2b;
+    --line: #24243a;
+    --text: #eef0f6;
+    --muted: #8f93a8;
+    --faint: #5c6075;
+    --green: #2ee6a8;
+    --green-soft: rgba(46, 230, 168, .13);
+    --amber: #ffb84d;
+    --red: #ff6b7a;
+    --c-groceries: #2ee6a8;
+    --c-gas: #4da3ff;
+    --c-dining: #ff9f43;
+    --c-household: #b06bff;
+    --c-utilities: #2ec9e6;
+    --c-health: #ff6b7a;
+    --c-shopping: #ffd166;
+    --c-entertainment: #f078c2;
+    --c-other: #8f93a8;
+    --sheet-radius: 22px;
+    --tabbar-h: 72px;
   }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { height: 100%; }
 
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, 'Segoe UI', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    overscroll-behavior-y: none;
   }
 
-  /* ── SCREENS ── */
-  .screen { display: none; flex-direction: column; min-height: 100vh; padding: 24px 20px; }
-  .screen.active { display: flex; }
-
-  /* ── SETUP SCREENS ── */
-  .setup-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-width: 420px;
-    margin: 0 auto;
-    width: 100%;
-    gap: 32px;
+  h1, h2, h3, .num, .display {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
   }
 
-  .setup-logo {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--accent);
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input, select { font: inherit; }
+  input::placeholder { color: var(--faint); }
+
+  /* ---------- App shell ---------- */
+  .app-header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 12px;
+    background: linear-gradient(var(--bg) 78%, transparent);
+  }
+  .brand .eyebrow {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: .32em; color: var(--green);
     text-transform: uppercase;
   }
-
-  .setup-title {
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--text);
+  .brand .screen-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+  }
+  .month-nav {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px;
+  }
+  .month-nav button {
+    width: 32px; height: 32px; border-radius: 50%;
+    color: var(--muted); font-size: 16px; line-height: 1;
+    display: grid; place-items: center;
+  }
+  .month-nav button:active { background: var(--surface-2); }
+  .month-nav .month-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600; padding: 0 4px; min-width: 74px; text-align: center;
   }
 
-  .setup-sub {
-    font-size: 15px;
-    color: var(--text2);
-    line-height: 1.5;
-    margin-top: -20px;
+  main {
+    padding: 0 16px calc(var(--tabbar-h) + 28px + env(safe-area-inset-bottom));
+    max-width: 560px; margin: 0 auto;
+  }
+  .view { display: none; }
+  .view.active { display: block; animation: fadeUp .22s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .view.active { animation: none; }
+    .sheet, .backdrop, .fab, .toast { transition: none !important; }
   }
 
-  .setup-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1.5px solid #2a2a40;
-    border-radius: var(--radius-sm);
-    padding: 16px;
-    font-size: 17px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 14px;
   }
-  .setup-input:focus { border-color: var(--accent); }
-  .setup-input::placeholder { color: var(--text2); }
-
-  .btn-primary {
-    width: 100%;
-    background: var(--accent);
-    color: #0a0a14;
-    border: none;
-    border-radius: var(--radius-sm);
-    padding: 17px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
+  .card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 14px;
   }
-  .btn-primary:active { opacity: 0.85; transform: scale(0.98); }
-  .btn-primary:disabled { opacity: 0.4; }
+  .card-head h2 { font-size: 15px; font-weight: 600; }
+  .link-btn { color: var(--green); font-size: 13px; font-weight: 600; }
 
-  .btn-ghost {
-    background: transparent;
-    border: 1.5px solid #2a2a40;
-    color: var(--text2);
-    border-radius: var(--radius-sm);
-    padding: 14px;
-    font-size: 15px;
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
+  /* ---------- Sample data banner ---------- */
+  .banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--green-soft); border: 1px solid rgba(46,230,168,.35);
+    border-radius: 14px; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 13px; color: var(--text);
   }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .banner button { color: var(--green); font-weight: 600; font-size: 13px; white-space: nowrap; }
 
-  /* ── SECURITY OPTIONS ── */
-  .security-note {
-    background: var(--surface2);
-    border-left: 3px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
-    font-size: 13px;
-    color: var(--text2);
-    line-height: 1.5;
+  /* ---------- Spending ring ---------- */
+  .ring-card { text-align: center; padding-top: 22px; }
+  .ring-wrap { position: relative; width: 210px; height: 210px; margin: 0 auto; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--surface-2); stroke-width: 14; }
+  .ring-fill {
+    fill: none; stroke: var(--green); stroke-width: 14; stroke-linecap: round;
+    transition: stroke-dashoffset .7s cubic-bezier(.22,.9,.36,1), stroke .3s;
   }
-  .security-note strong { color: var(--accent); }
+  .ring-pace { stroke: var(--faint); stroke-width: 3; }
+  .ring-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+  }
+  .ring-center .spent {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 30px; font-weight: 700; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ring-center .of-budget { font-size: 12.5px; color: var(--muted); }
+  .ring-legend {
+    display: flex; justify-content: center; gap: 18px;
+    margin-top: 16px; font-size: 12px; color: var(--muted);
+  }
+  .ring-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .stat-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px;
+  }
+  .stat-row .stat + .stat { border-left: 1px solid var(--line); }
+  .stat .stat-val { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat-val.good { color: var(--green); }
+  .stat-val.warn { color: var(--amber); }
+  .stat-val.bad { color: var(--red); }
 
-  .security-options { display: flex; flex-direction: column; gap: 10px; }
+  /* ---------- Category bars ---------- */
+  .cat-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+  .cat-icon {
+    width: 38px; height: 38px; border-radius: 12px; flex: none;
+    display: grid; place-items: center; font-size: 17px;
+    background: var(--surface-2);
+  }
+  .cat-body { flex: 1; min-width: 0; }
+  .cat-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cat-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-amt { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cat-pct { font-size: 11.5px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+  .cat-bar { height: 6px; border-radius: 3px; background: var(--surface-2); margin-top: 7px; overflow: hidden; }
+  .cat-bar > i { display: block; height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.22,.9,.36,1); }
 
-  .security-option {
-    background: var(--surface2);
-    border: 1.5px solid #2a2a40;
-    border-radius: var(--radius-sm);
-    padding: 16px;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-    display: flex;
+  /* ---------- Transactions list ---------- */
+  .tx-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-bottom: 1px solid var(--line);
+    width: 100%; text-align: left;
+  }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-body { flex: 1; min-width: 0; }
+  .tx-vendor { font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .tx-right { text-align: right; }
+  .tx-amt { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tx-date { font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+  .alloc-tag {
+    display: inline-block; font-size: 10.5px; font-weight: 600;
+    padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px;
+    background: var(--surface-2); color: var(--muted);
+  }
+  .empty {
+    text-align: center; color: var(--muted); font-size: 13.5px;
+    padding: 26px 12px;
+  }
+  .empty .big { font-size: 30px; margin-bottom: 8px; }
+
+  /* ---------- Receipts view ---------- */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-wrap input {
+    width: 100%; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 14px 12px 40px; color: var(--text);
+  }
+  .search-wrap::before {
+    content: "🔍"; position: absolute; left: 13px; top: 50%;
+    transform: translateY(-50%); font-size: 14px; opacity: .6;
+  }
+
+  /* ---------- Charts view ---------- */
+  .seg {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 3px; margin-bottom: 16px;
+  }
+  .seg button {
+    padding: 8px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--muted);
+  }
+  .seg button.on { background: var(--surface-2); color: var(--text); }
+
+  /* ---------- Settings ---------- */
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row .s-label { font-size: 14.5px; font-weight: 500; }
+  .settings-row .s-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .settings-row input[type=number] {
+    width: 110px; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; color: var(--text); text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .settings-row select {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; color: var(--text);
+  }
+  .danger-btn { color: var(--red); font-weight: 600; font-size: 14px; }
+
+  /* ---------- Tab bar + FAB ---------- */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: rgba(14, 14, 24, .92);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr 1fr 88px 1fr 1fr;
     align-items: center;
-    gap: 14px;
+  }
+  .tab {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--faint); font-size: 10.5px; font-weight: 600; padding: 6px 0;
+  }
+  .tab .t-icon { font-size: 20px; line-height: 1; filter: grayscale(1) opacity(.55); }
+  .tab.on { color: var(--green); }
+  .tab.on .t-icon { filter: none; }
+  .fab-slot { position: relative; height: 100%; }
+  .fab {
+    position: absolute; left: 50%; top: -24px; transform: translateX(-50%);
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--green); color: #062018;
+    font-size: 30px; font-weight: 500; line-height: 1;
+    display: grid; place-items: center;
+    box-shadow: 0 6px 22px rgba(46, 230, 168, .38);
+    transition: transform .15s;
+  }
+  .fab:active { transform: translateX(-50%) scale(.93); }
+
+  /* ---------- Bottom sheet ---------- */
+  .backdrop {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(4, 4, 10, .6);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
+    max-width: 560px; margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--line); border-bottom: none;
+    border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+    padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+    transform: translateY(105%);
+    transition: transform .3s cubic-bezier(.22,.9,.36,1);
+    max-height: 88vh; overflow-y: auto;
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 4px auto 14px; }
+  .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .sheet-thumb {
+    width: 52px; height: 52px; border-radius: 12px; object-fit: cover;
+    background: var(--surface-2); border: 1px solid var(--line); flex: none;
+  }
+  .sheet-titles { flex: 1; min-width: 0; }
+  .sheet-title { font-size: 17px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+  .sheet-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .sheet-close { color: var(--faint); font-size: 22px; padding: 4px 6px; }
+
+  .field { margin-bottom: 16px; }
+  .field-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .auto-tag {
+    font-size: 9.5px; letter-spacing: .06em; color: var(--green);
+    background: var(--green-soft); border-radius: 999px; padding: 1px 8px;
+    display: none;
+  }
+  .auto-tag.show { display: inline-block; }
+  .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .text-input {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 13px; color: var(--text);
+  }
+  .text-input:focus { outline: none; border-color: var(--green); }
+
+  .chip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chip {
+    padding: 11px 6px; border-radius: 12px; text-align: center;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font-size: 13.5px; font-weight: 600; color: var(--muted);
+    transition: all .12s;
+  }
+  .chip.on { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .chip[data-alloc="Personal"].on {
+    background: rgba(255, 184, 77, .12); border-color: var(--amber); color: var(--amber);
+  }
+  .alloc-hint {
+    font-size: 11.5px; color: var(--faint); margin-top: 8px; line-height: 1.4;
+    display: none;
+  }
+  .alloc-hint.show { display: block; }
+  .alloc-hint.lock { color: var(--amber); }
+  .work-toggle {
+    width: 100%; padding: 12px; border-radius: 12px; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font-size: 13.5px; font-weight: 600; color: var(--muted); transition: all .12s;
+  }
+  .work-toggle.on {
+    background: rgba(255, 184, 77, .12); border-color: var(--amber); color: var(--amber);
+  }
+  #workHint { display: none; margin-top: 8px; }
+  .work-toggle.on + #workHint { display: block; }
+  .cat-group-label {
+    grid-column: 1 / -1; font-size: 10px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+    margin: 8px 0 0; padding-top: 4px;
+  }
+  .cat-group-label:first-child { margin-top: 0; }
+  .work-badge {
+    display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+    color: var(--amber); background: rgba(255,184,77,.12);
+    border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
+  }
+  .trend { display: flex; gap: 8px; align-items: stretch; height: 148px; padding-top: 4px; }
+  .trend .tcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+  .trend .tamt { font-size: 9.5px; color: var(--faint); height: 13px; white-space: nowrap; }
+  .trend .tbar { flex: 1; width: 100%; max-width: 34px; position: relative; background: var(--surface-2); border-radius: 7px; overflow: hidden; }
+  .trend .tbar i { position: absolute; bottom: 0; left: 0; right: 0; background: var(--line); border-radius: 7px 7px 0 0; transition: height .5s ease; }
+  .trend .tcol.now .tbar i { background: var(--green); }
+  .trend .tlab { font-size: 10px; color: var(--muted); }
+  .trend .tcol.now .tlab { color: var(--green); font-weight: 700; }
+
+  /* ---------------- overlays: onboarding + lock ---------------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 200; background: var(--bg, #0a0a14);
+    display: flex; align-items: center; justify-content: center;
+    padding: 28px 24px calc(28px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+  .overlay[hidden] { display: none; }
+  .ob-inner { width: 100%; max-width: 380px; text-align: center; }
+  .ob-brand {
+    font-size: 11px; letter-spacing: .3em; font-weight: 700;
+    color: var(--green); margin-bottom: 18px;
+  }
+  .ob-h { font-size: 26px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif; }
+  .ob-p { font-size: 14.5px; color: var(--muted); line-height: 1.55; margin-bottom: 22px; }
+  .ob-p b { color: var(--text); }
+  .ob-opts { display: grid; gap: 10px; margin-bottom: 22px; text-align: left; }
+  .ob-opt {
+    padding: 14px 16px; border-radius: 14px; background: var(--surface-2);
+    border: 1.5px solid var(--line); font-size: 14.5px; font-weight: 600; color: var(--text);
+  }
+  .ob-opt small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ob-opt.on { border-color: var(--green); background: rgba(46, 230, 168, .08); }
+  .ob-note {
+    font-size: 12px; color: var(--faint); line-height: 1.5; margin-bottom: 20px;
+    background: var(--surface-2); border-radius: 12px; padding: 12px 14px; text-align: left;
+  }
+  .ob-pin-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .ob-pin-row input {
+    width: 130px; text-align: center; font-size: 22px; letter-spacing: .4em;
+    background: var(--surface-2); border: 1.5px solid var(--line); border-radius: 14px;
+    padding: 12px 8px; color: var(--text);
+  }
+  .ob-pin-row input:focus { outline: none; border-color: var(--green); }
+  .ob-cta {
+    width: 100%; padding: 15px; border-radius: 14px; background: var(--green);
+    color: #06281c; font-size: 15px; font-weight: 800; margin-bottom: 10px;
+  }
+  .ob-skip { width: 100%; padding: 12px; color: var(--faint); font-size: 13.5px; }
+  .ob-dots { display: flex; gap: 7px; justify-content: center; margin-top: 22px; }
+  .ob-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .ob-dots i.on { background: var(--green); }
+  .ob-err { color: var(--red); font-size: 12.5px; margin: -12px 0 14px; min-height: 16px; }
+
+  .lock-inner .bio-btn {
+    width: 100%; padding: 15px; border-radius: 14px; margin-bottom: 22px;
+    background: rgba(46, 230, 168, .1); border: 1.5px solid var(--green);
+    color: var(--green); font-size: 15px; font-weight: 700;
+  }
+  .pin-dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 22px; min-height: 14px; }
+  .pin-dots i { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--faint); }
+  .pin-dots i.fill { background: var(--green); border-color: var(--green); }
+  .pinpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 260px; margin: 0 auto; }
+  .pinpad button {
+    height: 64px; border-radius: 50%; background: var(--surface-2);
+    border: 1px solid var(--line); font-size: 22px; font-weight: 600; color: var(--text);
+  }
+  .pinpad button:active { background: var(--line); }
+  .pinpad button.blank { visibility: hidden; }
+
+  .info-btn { font-size: 17px; padding: 6px 8px; }
+  .info-body { text-align: left; padding-bottom: 8px; }
+  .info-body h3 { font-size: 13px; font-weight: 700; margin: 16px 0 6px; color: var(--text); }
+  .info-body h3:first-child { margin-top: 0; }
+  .info-body p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .info-body b { color: var(--text); }
+  .mini-btn {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 14px; color: var(--text); font-size: 13px; font-weight: 600;
+  }
+
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cat-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 11px 4px; border-radius: 12px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    font-size: 11.5px; font-weight: 600; color: var(--muted);
+    transition: all .12s;
+  }
+  .cat-chip .ce { font-size: 18px; }
+  .cat-chip.on { border-color: var(--green); background: var(--green-soft); color: var(--text); }
+
+  .sheet-actions { display: grid; gap: 10px; margin-top: 20px; }
+  .btn-primary {
+    background: var(--green); color: #062018;
+    border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 700;
+    text-align: center;
+  }
+  .btn-primary:active { opacity: .85; }
+  .btn-ghost {
+    border: 1px solid var(--line); border-radius: 14px; padding: 13px;
+    font-size: 14px; font-weight: 600; color: var(--muted); text-align: center;
+  }
+  .btn-delete { color: var(--red); font-size: 13.5px; font-weight: 600; padding: 8px; }
+
+  /* ---------- Capture landing (inside sheet flow) ---------- */
+  .capture-choice { display: grid; gap: 10px; padding: 6px 0 4px; }
+  .capture-big {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px;
     text-align: left;
   }
-  .security-option:hover { border-color: var(--accent2); }
-  .security-option.selected { border-color: var(--accent); background: rgba(0,229,160,0.06); }
+  .capture-big:active { border-color: var(--green); }
+  .capture-big .cb-icon {
+    width: 46px; height: 46px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: 21px;
+    background: var(--green-soft);
+  }
+  .capture-big .cb-title { font-size: 15px; font-weight: 700; }
+  .capture-big .cb-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
 
-  .sec-icon { font-size: 22px; flex-shrink: 0; }
-  .sec-label { font-size: 15px; font-weight: 600; color: var(--text); }
-  .sec-desc { font-size: 13px; color: var(--text2); margin-top: 2px; }
-  .sec-radio {
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    border: 2px solid #2a2a40;
-    margin-left: auto;
-    flex-shrink: 0;
-    transition: border-color 0.2s, background 0.2s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .security-option.selected .sec-radio {
-    border-color: var(--accent);
-    background: var(--accent);
-  }
-  .security-option.selected .sec-radio::after {
-    content: '';
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #0a0a14;
-  }
-
-  /* ── PIN SETUP ── */
-  .pin-dots {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    margin: 8px 0;
-  }
-  .pin-dot {
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    border: 2px solid var(--text2);
-    transition: background 0.15s, border-color 0.15s;
-  }
-  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
-
-  .pin-pad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    max-width: 280px;
-    margin: 0 auto;
-    width: 100%;
-  }
-  .pin-key {
-    background: var(--surface2);
-    border: none;
-    border-radius: var(--radius-sm);
-    padding: 18px;
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: pointer;
-    transition: background 0.1s, transform 0.1s;
-    aspect-ratio: 1;
-  }
-  .pin-key:active { background: var(--surface); transform: scale(0.93); }
-  .pin-key.delete { font-size: 18px; color: var(--text2); }
-  .pin-key.empty { background: transparent; cursor: default; }
-
-  .pin-error { color: var(--danger); font-size: 13px; text-align: center; min-height: 18px; }
-
-  /* ── LOCK SCREEN ── */
-  #lock-screen {
-    justify-content: center;
-    align-items: center;
-    gap: 32px;
-  }
-  .lock-avatar {
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    background: var(--surface2);
-    border: 2px solid var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px;
-    margin: 0 auto;
-  }
-  .lock-name { font-size: 22px; font-weight: 700; text-align: center; }
-  .lock-sub { font-size: 14px; color: var(--text2); text-align: center; margin-top: -24px; }
-
-  .btn-biometric {
-    width: 100%;
-    max-width: 320px;
-    background: var(--surface2);
-    border: 1.5px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 18px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--accent);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    transition: background 0.15s;
-  }
-  .btn-biometric:active { background: rgba(0,229,160,0.1); }
-
-  .lock-pin-wrap { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 20px; }
-
-  .lock-divider {
-    display: flex; align-items: center; gap: 12px;
-    color: var(--text2); font-size: 12px;
-    max-width: 320px; width: 100%;
-  }
-  .lock-divider::before, .lock-divider::after {
-    content: ''; flex: 1; height: 1px; background: #2a2a40;
-  }
-
-  /* ── HOME SCREEN ── */
-  #home-screen { padding: 0; }
-
-  .home-header {
-    padding: 52px 20px 20px;
-    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
-  }
-  .home-logo { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; }
-  .home-greeting { font-size: 26px; font-weight: 700; }
-  .home-date { font-size: 13px; color: var(--text2); margin-top: 2px; }
-
-  .home-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 16px 20px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 16px;
-  }
-  .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--text2); text-transform: uppercase; }
-  .stat-value { font-size: 28px; font-weight: 700; color: var(--accent); margin-top: 4px; }
-  .stat-value.neutral { color: var(--text); font-size: 22px; }
-
-  .add-receipt-btn {
-    margin: 4px 20px 16px;
-    background: var(--accent);
-    color: #0a0a14;
-    border: none;
-    border-radius: var(--radius);
-    padding: 20px;
-    font-size: 17px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .add-receipt-btn:active { opacity: 0.85; transform: scale(0.98); }
-
-  .section-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.15em;
-    color: var(--text2); text-transform: uppercase;
-    padding: 0 20px; margin-bottom: 10px;
-  }
-
-  .receipt-list { padding: 0 20px; flex: 1; }
-
-  /* ── DASHBOARD BARS ── */
-  .bar-row { margin-bottom: 14px; }
-  .bar-row:last-child { margin-bottom: 0; }
-  .bar-row-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .bar-row-label { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-  .bar-row-amount { font-size: 14px; font-weight: 700; color: var(--text); }
-  .bar-row-pct { font-size: 11px; color: var(--text2); margin-left: 4px; }
-  .bar-track { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-  .empty-state {
-    text-align: center; color: var(--text2);
-    padding: 40px 20px; font-size: 15px; line-height: 1.6;
-  }
-
-  .receipt-item {
-    background: var(--surface);
-    border-radius: var(--radius-sm);
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    display: flex; align-items: center; gap: 14px;
-  }
-  .receipt-icon {
-    width: 42px; height: 42px; border-radius: 10px;
-    background: var(--surface2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .receipt-vendor { font-size: 15px; font-weight: 600; }
-  .receipt-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .receipt-amount { font-size: 16px; font-weight: 700; color: var(--accent); margin-left: auto; }
-
-  /* ── BOTTOM NAV ── */
-  .bottom-nav {
-    position: sticky; bottom: 0;
-    background: var(--surface);
-    border-top: 1px solid #1a1a2e;
-    display: flex;
-    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
-  }
-  .nav-item {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; gap: 4px;
-    background: none; border: none;
-    color: var(--text2); cursor: pointer;
-    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
-    text-transform: uppercase; padding: 6px 0;
-    transition: color 0.15s;
-  }
-  .nav-item.active { color: var(--accent); }
-  .nav-item svg { width: 22px; height: 22px; }
-  .nav-add {
-    background: var(--accent);
-    color: #0a0a14;
-    border-radius: 50%;
-    width: 48px; height: 48px;
-    display: flex; align-items: center; justify-content: center;
-    margin-top: -10px;
-    border: none; cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0,229,160,0.3);
-    font-size: 24px; font-weight: 300;
-    transition: transform 0.1s;
-  }
-  .nav-add:active { transform: scale(0.93); }
-
-  /* ── ADD SCREEN ── */
-  #add-screen { background: var(--bg); }
-  .add-header {
-    display: flex; align-items: center; gap: 14px;
-    padding: 52px 20px 20px;
-  }
-  .back-btn {
-    background: var(--surface2); border: none;
-    border-radius: 50%; width: 38px; height: 38px;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text); cursor: pointer; font-size: 18px; flex-shrink: 0;
-  }
-  .add-title { font-size: 22px; font-weight: 700; }
-
-  .add-body { padding: 0 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
-
-  .field-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
-
-  .field-input {
-    width: 100%; background: var(--surface);
-    border: 1.5px solid #2a2a40; border-radius: var(--radius-sm);
-    padding: 14px 16px; font-size: 16px; color: var(--text); outline: none;
-    transition: border-color 0.2s;
-  }
-  .field-input:focus { border-color: var(--accent); }
-
-  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .chip {
-    background: var(--surface); border: 1.5px solid #2a2a40;
-    border-radius: 20px; padding: 8px 16px;
-    font-size: 13px; font-weight: 600; color: var(--text2);
-    cursor: pointer; transition: all 0.15s;
-  }
-  .chip.active { background: var(--accent); border-color: var(--accent); color: #0a0a14; }
-
-  .photo-btn {
-    background: var(--surface); border: 1.5px dashed #2a2a40;
-    border-radius: var(--radius); padding: 24px;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    cursor: pointer; color: var(--text2); font-size: 14px;
-    transition: border-color 0.2s;
-  }
-  .photo-btn:hover { border-color: var(--accent); }
-  .photo-preview { width: 100%; border-radius: var(--radius-sm); max-height: 200px; object-fit: cover; display: none; }
-
-  /* ── SETTINGS SCREEN ── */
-  #settings-screen { background: var(--bg); }
-  .settings-header { padding: 52px 20px 20px; }
-  .settings-title { font-size: 26px; font-weight: 700; }
-  .settings-body { padding: 0 20px; display: flex; flex-direction: column; gap: 12px; }
-
-  .settings-section-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.15em;
-    color: var(--text2); text-transform: uppercase; margin-top: 8px;
-  }
-
-  .settings-row {
-    background: var(--surface); border-radius: var(--radius-sm);
-    padding: 16px; display: flex; align-items: center; gap: 14px;
-  }
-  .settings-row-label { font-size: 15px; font-weight: 500; flex: 1; }
-  .settings-row-value { font-size: 14px; color: var(--text2); }
-
-  select.field-input { appearance: none; }
-
-  .danger-btn {
-    background: transparent; border: 1.5px solid var(--danger);
-    border-radius: var(--radius-sm); padding: 14px;
-    font-size: 15px; color: var(--danger); cursor: pointer; width: 100%;
-    margin-top: 8px;
-  }
-
-  /* ── TOAST ── */
+  /* ---------- Toast ---------- */
   .toast {
-    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-    background: var(--surface2); color: var(--text);
-    padding: 12px 20px; border-radius: 20px;
-    font-size: 14px; font-weight: 500;
-    opacity: 0; transition: opacity 0.3s;
-    pointer-events: none; white-space: nowrap;
-    border: 1px solid #2a2a40; z-index: 999;
+    position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(16px);
+    background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--text); font-size: 13.5px; font-weight: 500;
+    padding: 11px 18px; border-radius: 999px; z-index: 60;
+    opacity: 0; pointer-events: none; transition: all .25s;
+    white-space: nowrap; box-shadow: 0 8px 30px rgba(0,0,0,.5);
   }
-  .toast.show { opacity: 1; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .tick { color: var(--green); margin-right: 6px; }
+
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     SETUP: WELCOME
-══════════════════════════════════════════ -->
-<div id="setup-welcome" class="screen">
-  <div class="setup-wrap">
-    <div>
-      <div class="setup-logo">family.budget</div>
-      <div class="setup-title">Welcome.<br>Let's get you set up.</div>
-    </div>
-    <div class="setup-sub">This takes about 60 seconds. You'll only do this once.</div>
-    <div>
-      <div class="field-label">Your first name</div>
-      <input class="setup-input" id="setup-name" type="text" placeholder="e.g. Voytek" autocomplete="given-name" maxlength="30">
-    </div>
-    <button class="btn-primary" onclick="setupNameNext()">Continue →</button>
+<header class="app-header">
+  <div class="brand">
+    <div class="eyebrow">Family.Budget</div>
+    <div class="screen-title" id="screenTitle">Home</div>
   </div>
-</div>
+  <div class="month-nav" id="monthNav">
+    <button id="monthPrev" aria-label="Previous month">‹</button>
+    <span class="month-label" id="monthLabel"></span>
+    <button id="monthNext" aria-label="Next month">›</button>
+  </div>
+  <button class="info-btn" id="infoBtn" aria-label="About this app">ℹ️</button>
+</header>
 
-<!-- ══════════════════════════════════════════
-     SETUP: SECURITY LEVEL
-══════════════════════════════════════════ -->
-<div id="setup-security" class="screen">
-  <div class="setup-wrap">
-    <div>
-      <div class="setup-logo">family.budget</div>
-      <div class="setup-title">How should we protect your data?</div>
+<main>
+  <!-- ============ HOME ============ -->
+  <section class="view active" id="view-home">
+    <div class="seg" id="homeSeg"></div>
+    <div class="banner" id="sampleBanner" hidden>
+      <span>Showing sample data so you can preview the dashboard.</span>
+      <button id="clearSampleBtn">Clear it</button>
     </div>
 
-    <div class="security-note">
-      🔒 <strong>Biometric options use your Samsung fingerprint or face ID</strong> — the same security as unlocking your phone. No biometric data is ever stored by this app.
-    </div>
-
-    <div class="security-options" id="security-options">
-      <div class="security-option" onclick="selectSecurity('every', this)">
-        <div class="sec-icon">🔐</div>
-        <div>
-          <div class="sec-label">Every open</div>
-          <div class="sec-desc">Maximum privacy — always asks</div>
+    <div class="card ring-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 210 210" aria-hidden="true">
+          <circle class="ring-track" cx="105" cy="105" r="88"></circle>
+          <circle class="ring-fill" id="ringFill" cx="105" cy="105" r="88"></circle>
+          <line class="ring-pace" id="ringPace" x1="0" y1="0" x2="0" y2="0"></line>
+        </svg>
+        <div class="ring-center">
+          <div class="spent num" id="ringSpent">$0</div>
+          <div class="of-budget" id="ringBudget">of $0 budget</div>
         </div>
-        <div class="sec-radio"></div>
       </div>
-      <div class="security-option" onclick="selectSecurity('daily', this)">
-        <div class="sec-icon">🌙</div>
+      <div class="ring-legend">
+        <span><span class="dot" style="background:var(--green)"></span>Spent</span>
+        <span><span class="dot" style="background:var(--faint)"></span>Today's pace</span>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-val" id="statLeft">$0</div><div class="stat-label">Left this month</div></div>
+        <div class="stat"><div class="stat-val" id="statPerDay">$0</div><div class="stat-label">Per day remaining</div></div>
+        <div class="stat"><div class="stat-val" id="statCount">0</div><div class="stat-label">Receipts</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Top categories</h2>
+        <button class="link-btn" data-goto="charts">See all</button>
+      </div>
+      <div id="homeCats"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Recent receipts</h2>
+        <button class="link-btn" data-goto="receipts">See all</button>
+      </div>
+      <div id="homeRecent"></div>
+    </div>
+  </section>
+
+  <!-- ============ RECEIPTS ============ -->
+  <section class="view" id="view-receipts">
+    <div class="seg" id="receiptsSeg"></div>
+    <div class="search-wrap">
+      <input type="search" id="searchInput" placeholder="Search vendor or category" autocomplete="off">
+    </div>
+    <div class="card" id="receiptsList"></div>
+  </section>
+
+  <!-- ============ CHARTS ============ -->
+  <section class="view" id="view-charts">
+    <div class="seg" id="chartSeg"></div>
+    <div class="card" id="chartTrendCard">
+      <div class="card-head"><h2>6-month trend</h2></div>
+      <div class="trend" id="trendBars"></div>
+    </div>
+    <div class="card" id="chartList"></div>
+    <div class="card" id="chartAllocCard">
+      <div class="card-head"><h2>Who paid — joint spending</h2></div>
+      <div id="chartAllocList"></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <div class="settings-row">
         <div>
-          <div class="sec-label">Once per day</div>
-          <div class="sec-desc">Asks once, then remembers until midnight</div>
+          <div class="s-label">This phone belongs to</div>
+          <div class="s-sub">The personal view shows only this person</div>
         </div>
-        <div class="sec-radio"></div>
+        <select id="ownerInput">
+          <option value="Voytek">Voytek</option>
+          <option value="Andrea">Andrea</option>
+        </select>
       </div>
-      <div class="security-option" onclick="selectSecurity('session', this)">
-        <div class="sec-icon">⚡</div>
+      <div class="settings-row">
         <div>
-          <div class="sec-label">Once per session</div>
-          <div class="sec-desc">Asks when you close and reopen the app</div>
+          <div class="s-label">Shared monthly budget</div>
+          <div class="s-sub">Ring target in the Shared view</div>
         </div>
-        <div class="sec-radio"></div>
+        <input type="number" id="budgetInput" min="0" step="50" inputmode="decimal">
       </div>
-      <div class="security-option" onclick="selectSecurity('none', this)">
-        <div class="sec-icon">🚀</div>
+      <div class="settings-row">
         <div>
-          <div class="sec-label">No lock</div>
-          <div class="sec-desc">Opens instantly — least private</div>
+          <div class="s-label">Personal monthly budget</div>
+          <div class="s-sub">Ring target in the personal view</div>
         </div>
-        <div class="sec-radio"></div>
+        <input type="number" id="pbudgetInput" min="0" step="50" inputmode="decimal">
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">App lock</div>
+          <div class="s-sub">Fingerprint / PIN when opening</div>
+        </div>
+        <select id="lockModeInput">
+          <option value="every">Every open</option>
+          <option value="daily">Once per day</option>
+          <option value="session">Per session</option>
+          <option value="none">No lock</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">PIN</div>
+          <div class="s-sub">4-digit backup code</div>
+        </div>
+        <button class="mini-btn" id="changePinBtn">Change</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Fingerprint</div>
+          <div class="s-sub">Samsung biometric — nothing stored by the app</div>
+        </div>
+        <button class="mini-btn" id="bioRegBtn">Register</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Save receipts via</div>
+          <div class="s-sub">Share sends the photo to the OneDrive app</div>
+        </div>
+        <select id="saveMethod">
+          <option value="share">Share sheet</option>
+          <option value="download">Download</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Default allocation</div>
+          <div class="s-sub">Pre-selected when you capture</div>
+        </div>
+        <select id="defaultAlloc">
+          <option value="last">Last used</option>
+          <option value="Shared">Shared</option>
+          <option value="Voytek">Voytek</option>
+          <option value="Andrea">Andrea</option>
+          <option value="Personal">Personal</option>
+        </select>
       </div>
     </div>
-
-    <div style="display:flex;gap:10px;">
-      <button class="btn-ghost" style="flex:1" onclick="showScreen('setup-welcome')">← Back</button>
-      <button class="btn-primary" style="flex:2" id="sec-next-btn" onclick="setupSecurityNext()" disabled>Continue →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     SETUP: APP INFO
-══════════════════════════════════════════ -->
-<div id="setup-appinfo" class="screen" style="padding:0;overflow-y:auto">
-  <div class="setup-wrap" style="justify-content:flex-start;padding-top:52px;padding-bottom:40px;gap:20px">
-    <div>
-      <div class="setup-logo">family.budget</div>
-      <div class="setup-title">Here's what's set up for you.</div>
-      <div class="setup-sub" style="margin-top:8px">One quick read before we finish.</div>
-    </div>
-
-    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">🔒 Privacy & hosting</div>
-      This app lives on a private GitHub account under Voytek's profile. It looks like a website but <strong style="color:var(--text)">only you and Voytek can access it</strong> — it is not public.
-    </div>
-
-    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">📁 Your folders in OneDrive</div>
-      🏠 <strong style="color:var(--text)">Shared family folder</strong> — household spending visible to both of you.<br><br>
-      👤 <strong style="color:var(--text)">Your private folder</strong> — on your OneDrive only. Voytek cannot see it. Optional: use it to track your own personal spending with your own dashboard. Already set up — ask Voytek when you're ready to enable it.<br><br>
-      Voytek has his own private folder too — you can't see his either. We each track our own separately, and shared spending together.
-    </div>
-
-    <div style="background:var(--surface2);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">📱 Lock behaviour</div>
-      The app <strong style="color:var(--text)">won't lock if you briefly switch apps</strong> — it gives you a 30-second grace period. It only locks after <strong style="color:var(--text)">2 minutes of inactivity</strong> or when fully closed. You can change this anytime in Settings.
-    </div>
-
-    <div style="font-size:12px;color:var(--text2);text-align:center">You can access this info anytime via the ℹ️ icon on the home screen.</div>
-
-    <div style="display:flex;gap:10px;">
-      <button class="btn-ghost" style="flex:1" onclick="showScreen('setup-security')">← Back</button>
-      <button class="btn-primary" style="flex:2" onclick="setupAppInfoNext()">Continue →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     SETUP: PIN
-══════════════════════════════════════════ -->
-<div id="setup-pin" class="screen">
-  <div class="setup-wrap">
-    <div>
-      <div class="setup-logo">family.budget</div>
-      <div class="setup-title" id="pin-setup-title">Create a 4-digit PIN</div>
-      <div class="setup-sub" style="margin-top:8px" id="pin-setup-sub">Used as backup if biometrics aren't available.</div>
-    </div>
-
-    <div class="pin-dots" id="setup-pin-dots">
-      <div class="pin-dot" id="sd0"></div>
-      <div class="pin-dot" id="sd1"></div>
-      <div class="pin-dot" id="sd2"></div>
-      <div class="pin-dot" id="sd3"></div>
-    </div>
-    <div class="pin-error" id="setup-pin-error"></div>
-
-    <div class="pin-pad">
-      <button class="pin-key" onclick="pinKey('1','setup')">1</button>
-      <button class="pin-key" onclick="pinKey('2','setup')">2</button>
-      <button class="pin-key" onclick="pinKey('3','setup')">3</button>
-      <button class="pin-key" onclick="pinKey('4','setup')">4</button>
-      <button class="pin-key" onclick="pinKey('5','setup')">5</button>
-      <button class="pin-key" onclick="pinKey('6','setup')">6</button>
-      <button class="pin-key" onclick="pinKey('7','setup')">7</button>
-      <button class="pin-key" onclick="pinKey('8','setup')">8</button>
-      <button class="pin-key" onclick="pinKey('9','setup')">9</button>
-      <button class="pin-key empty"></button>
-      <button class="pin-key" onclick="pinKey('0','setup')">0</button>
-      <button class="pin-key delete" onclick="pinDelete('setup')">⌫</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     LOCK SCREEN
-══════════════════════════════════════════ -->
-<div id="lock-screen" class="screen">
-  <div class="lock-avatar">👤</div>
-  <div>
-    <div class="lock-name" id="lock-name">Voytek</div>
-    <div class="lock-sub">Tap to unlock</div>
-  </div>
-
-  <button class="btn-biometric" id="bio-btn" onclick="tryBiometric()">
-    <span>👆</span> Use Fingerprint / Face ID
-  </button>
-
-  <div class="lock-divider">or enter PIN</div>
-
-  <div class="lock-pin-wrap">
-    <div class="pin-dots">
-      <div class="pin-dot" id="ld0"></div>
-      <div class="pin-dot" id="ld1"></div>
-      <div class="pin-dot" id="ld2"></div>
-      <div class="pin-dot" id="ld3"></div>
-    </div>
-    <div class="pin-error" id="lock-pin-error"></div>
-    <div class="pin-pad">
-      <button class="pin-key" onclick="pinKey('1','lock')">1</button>
-      <button class="pin-key" onclick="pinKey('2','lock')">2</button>
-      <button class="pin-key" onclick="pinKey('3','lock')">3</button>
-      <button class="pin-key" onclick="pinKey('4','lock')">4</button>
-      <button class="pin-key" onclick="pinKey('5','lock')">5</button>
-      <button class="pin-key" onclick="pinKey('6','lock')">6</button>
-      <button class="pin-key" onclick="pinKey('7','lock')">7</button>
-      <button class="pin-key" onclick="pinKey('8','lock')">8</button>
-      <button class="pin-key" onclick="pinKey('9','lock')">9</button>
-      <button class="pin-key empty"></button>
-      <button class="pin-key" onclick="pinKey('0','lock')">0</button>
-      <button class="pin-key delete" onclick="pinDelete('lock')">⌫</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     HOME SCREEN
-══════════════════════════════════════════ -->
-<div id="home-screen" class="screen">
-  <div class="home-header" style="position:relative">
-    <div class="home-logo">family.budget</div>
-    <div class="home-greeting" id="home-greeting">Good evening</div>
-    <div class="home-date" id="home-date"></div>
-    <button onclick="showInfo()" style="position:absolute;top:52px;right:20px;background:var(--surface2);border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;">ℹ️</button>
-  </div>
-
-  <div class="home-stats">
-    <div class="stat-card">
-      <div class="stat-label">This Month</div>
-      <div class="stat-value" id="stat-month">$0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Receipts</div>
-      <div class="stat-value neutral" id="stat-count">0</div>
-    </div>
-  </div>
-
-  <div id="dashboard-section" style="padding:0 20px;margin-bottom:8px;display:none">
-    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;margin-bottom:12px">
-      <div class="section-title" style="padding:0;margin-bottom:14px">By Category</div>
-      <div id="category-bars"></div>
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;margin-bottom:4px">
-      <div class="section-title" style="padding:0;margin-bottom:14px">By Who Paid</div>
-      <div id="paidby-bars"></div>
-    </div>
-  </div>
-
-  <button class="add-receipt-btn" onclick="showScreen('add-screen')">
-    🧾 Add Receipt
-  </button>
-
-  <div class="section-title">Recent</div>
-  <div class="receipt-list" id="receipt-list">
-    <div class="empty-state">No receipts yet.<br>Tap Add Receipt to get started.</div>
-  </div>
-
-  <nav class="bottom-nav">
-    <button class="nav-item active" onclick="showScreen('home-screen')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      Home
-    </button>
-    <button class="nav-item" style="flex:0.5"></button>
-    <button class="nav-add" onclick="showScreen('add-screen')">+</button>
-    <button class="nav-item" style="flex:0.5"></button>
-    <button class="nav-item" onclick="showScreen('settings-screen')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.87 6.87 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 9.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
-      Settings
-    </button>
-  </nav>
-</div>
-
-<!-- ══════════════════════════════════════════
-     ADD RECEIPT SCREEN
-══════════════════════════════════════════ -->
-<div id="add-screen" class="screen">
-  <div class="add-header">
-    <button class="back-btn" onclick="showScreen('home-screen')">←</button>
-    <div class="add-title">Add Receipt</div>
-  </div>
-  <div class="add-body">
-    <div>
-      <div class="field-label">Vendor / Store</div>
-      <input class="field-input" id="add-vendor" type="text" placeholder="e.g. Walmart, Loblaws">
-    </div>
-    <div>
-      <div class="field-label">Amount ($)</div>
-      <input class="field-input" id="add-amount" type="number" placeholder="0.00" step="0.01" inputmode="decimal">
-    </div>
-    <div>
-      <div class="field-label">Date</div>
-      <input class="field-input" id="add-date" type="date">
-    </div>
-    <div>
-      <div class="field-label">Bucket</div>
-      <div class="chip-row">
-        <div class="chip active" onclick="selectChip(this,'bucket')">🏠 Home</div>
-        <div class="chip" onclick="selectChip(this,'bucket')">💼 Work</div>
-        <div class="chip" onclick="selectChip(this,'bucket')">👤 Personal</div>
+    <div class="card">
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Clear sample data</div>
+          <div class="s-sub">Removes preview transactions only</div>
+        </div>
+        <button class="danger-btn" id="settingsClearSample">Clear</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Erase all transactions</div>
+          <div class="s-sub">Cannot be undone</div>
+        </div>
+        <button class="danger-btn" id="settingsClearAll">Erase</button>
       </div>
     </div>
-    <div>
-      <div class="field-label">Paid by</div>
-      <div class="chip-row">
-        <div class="chip active" onclick="selectChip(this,'paid')">Joint</div>
-        <div class="chip" onclick="selectChip(this,'paid')" id="chip-me"></div>
-        <div class="chip" onclick="selectChip(this,'paid')">Split 50/50</div>
-      </div>
+  </section>
+</main>
+
+<!-- ============ TAB BAR ============ -->
+<nav class="tabbar">
+  <button class="tab on" data-view="home"><span class="t-icon">🏠</span>Home</button>
+  <button class="tab" data-view="receipts"><span class="t-icon">🧾</span>Receipts</button>
+  <div class="fab-slot"><button class="fab" id="fabBtn" aria-label="Capture receipt">+</button></div>
+  <button class="tab" data-view="charts"><span class="t-icon">📊</span>Charts</button>
+  <button class="tab" data-view="settings"><span class="t-icon">⚙️</span>Settings</button>
+</nav>
+
+<!-- ============ CAPTURE SOURCE SHEET ============ -->
+<div class="backdrop" id="backdrop"></div>
+
+<div class="sheet" id="captureSheet" role="dialog" aria-label="Capture receipt">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-titles">
+      <div class="sheet-title">Add a receipt</div>
+      <div class="sheet-sub">Photograph it or pick from your gallery</div>
     </div>
-    <div>
-      <div class="field-label">Receipt Photo (optional)</div>
-      <div class="photo-btn" onclick="document.getElementById('photo-input').click()">
-        <span style="font-size:28px">📷</span>
-        <span>Tap to take photo or choose from gallery</span>
-      </div>
-      <img class="photo-preview" id="photo-preview">
-      <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="photoSelected(this)">
-    </div>
-    <button class="btn-primary" onclick="saveReceipt()" style="margin-bottom:20px">Save Receipt</button>
+    <button class="sheet-close" data-close>✕</button>
+  </div>
+  <div class="capture-choice">
+    <button class="capture-big" id="btnCamera">
+      <span class="cb-icon">📷</span>
+      <span><span class="cb-title">Take photo</span><br><span class="cb-sub">Opens your camera</span></span>
+    </button>
+    <button class="capture-big" id="btnGallery">
+      <span class="cb-icon">🖼️</span>
+      <span><span class="cb-title">Pick from gallery</span><br><span class="cb-sub">Select one or several receipts</span></span>
+    </button>
+    <button class="capture-big" id="btnManual">
+      <span class="cb-icon">✏️</span>
+      <span><span class="cb-title">Enter manually</span><br><span class="cb-sub">No photo — just the details</span></span>
+    </button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     SETTINGS SCREEN
-══════════════════════════════════════════ -->
-<div id="settings-screen" class="screen">
-  <div class="settings-header">
-    <div class="home-logo">family.budget</div>
-    <div class="settings-title">Settings</div>
+<!-- ============ CATEGORIZE SHEET ============ -->
+<div class="sheet" id="catSheet" role="dialog" aria-label="Categorize receipt">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <img class="sheet-thumb" id="sheetThumb" alt="" hidden>
+    <div class="sheet-titles">
+      <div class="sheet-title" id="sheetTitle">Categorize</div>
+      <div class="sheet-sub" id="sheetSub">Saved to your OneDrive inbox after this step</div>
+    </div>
+    <button class="sheet-close" data-close>✕</button>
   </div>
-  <div class="settings-body">
-    <div class="settings-section-title">Profile</div>
-    <div class="settings-row">
-      <div class="settings-row-label">Name</div>
-      <input class="field-input" id="settings-name" style="max-width:160px;padding:8px 12px;font-size:15px" type="text">
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-label">Default bucket</div>
-      <select class="field-input" id="settings-bucket" style="max-width:160px;padding:8px 12px;font-size:15px">
-        <option value="home">🏠 Home</option>
-        <option value="work">💼 Work</option>
-        <option value="personal">👤 Personal</option>
-      </select>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-label">Province</div>
-      <select class="field-input" id="settings-province" style="max-width:160px;padding:8px 12px;font-size:15px">
-        <option value="ON">Ontario</option>
-        <option value="BC">British Columbia</option>
-        <option value="AB">Alberta</option>
-        <option value="MB">Manitoba</option>
-        <option value="SK">Saskatchewan</option>
-        <option value="QC">Quebec</option>
-        <option value="NS">Nova Scotia</option>
-        <option value="NB">New Brunswick</option>
-        <option value="NL">Newfoundland</option>
-        <option value="PE">PEI</option>
-      </select>
-    </div>
 
-    <div class="settings-section-title">Security</div>
-    <div class="settings-row">
-      <div class="settings-row-label">Lock frequency</div>
-      <select class="field-input" id="settings-lock" style="max-width:160px;padding:8px 12px;font-size:15px">
-        <option value="every">Every open</option>
-        <option value="daily">Once per day</option>
-        <option value="session">Per session</option>
-        <option value="none">No lock</option>
-      </select>
+  <div class="field field-grid-2">
+    <div>
+      <div class="field-label">Vendor</div>
+      <input class="text-input" id="fVendor" list="vendorList" placeholder="e.g. Metro" autocomplete="off">
+      <datalist id="vendorList"></datalist>
     </div>
-    <button class="btn-ghost" onclick="changePin()">Change PIN</button>
-
-    <button class="btn-primary" onclick="saveSettings()" style="margin-top:8px">Save Settings</button>
-    <button class="danger-btn" onclick="resetApp()">Reset App & Clear All Data</button>
+    <div>
+      <div class="field-label">Amount</div>
+      <input class="text-input" id="fAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+    </div>
   </div>
-  <nav class="bottom-nav" style="margin-top:auto">
-    <button class="nav-item" onclick="showScreen('home-screen')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      Home
-    </button>
-    <button class="nav-item" style="flex:0.5"></button>
-    <button class="nav-add" onclick="showScreen('add-screen')">+</button>
-    <button class="nav-item" style="flex:0.5"></button>
-    <button class="nav-item active" onclick="showScreen('settings-screen')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a6.87 6.87 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 9.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
-      Settings
-    </button>
-  </nav>
+
+  <div class="field">
+    <div class="field-label">Date</div>
+    <input class="text-input" id="fDate" type="date">
+  </div>
+
+  <div class="field">
+    <div class="field-label">Allocation</div>
+    <div class="chip-row" id="allocChips"></div>
+    <div class="alloc-hint" id="allocHint"></div>
+  </div>
+
+  <div class="field">
+    <div class="field-label">Funding source <span class="auto-tag" id="fundAuto">Auto · from allocation</span></div>
+    <div class="chip-row" id="fundChips"></div>
+  </div>
+
+  <div class="field">
+    <button class="work-toggle" id="workToggle">💼 Work expense — flag for reimbursement</button>
+    <div class="alloc-hint" id="workHint">Kept out of budget totals; easy to find later when submitting to your corporate expense tool.</div>
+  </div>
+
+  <div class="field">
+    <div class="field-label">Category <span class="auto-tag" id="autoTag">Auto · from vendor</span></div>
+    <div class="cat-grid" id="catChips"></div>
+  </div>
+
+  <div class="sheet-actions">
+    <button class="btn-primary" id="saveBtn">Save receipt</button>
+    <button class="btn-ghost" id="saveAddBtn">Save &amp; add another</button>
+    <button class="btn-delete" id="deleteBtn" hidden>Delete this receipt</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<!-- ============ ONBOARDING ============ -->
+<div class="overlay" id="onboard" hidden>
+  <div class="ob-inner">
+    <div class="ob-brand">FAMILY.BUDGET</div>
+    <div id="obBody"></div>
+    <div class="ob-dots" id="obDots"></div>
+  </div>
+</div>
+
+<!-- ============ LOCK SCREEN ============ -->
+<div class="overlay" id="lockScreen" hidden>
+  <div class="ob-inner lock-inner">
+    <div class="ob-brand">FAMILY.BUDGET</div>
+    <h2 class="ob-h">Locked</h2>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="pinpad" id="pinPad"></div>
+    <button class="bio-btn" id="bioBtn" hidden style="margin-top:22px;margin-bottom:0">👆 Unlock with fingerprint</button>
+  </div>
+</div>
+
+<!-- ============ INFO SHEET ============ -->
+<div class="sheet" id="infoSheet">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <div class="sheet-titles">
+      <div class="sheet-title">About this app</div>
+      <div class="sheet-sub">How your data is stored and protected</div>
+    </div>
+    <button class="sheet-close" data-close>✕</button>
+  </div>
+  <div class="info-body">
+    <h3>🌐 Hosting</h3>
+    <p>The app's code loads from GitHub Pages. Only the app itself lives there — <b>no receipts, amounts, or personal data are ever uploaded to GitHub</b>. Everything you record stays on this phone; receipt photos go only to your family's OneDrive.</p>
+    <h3>📁 Folders &amp; privacy</h3>
+    <p><b>🏠 Shared</b> — household receipts both of you can see.<br>
+       <b>🔒 Voytek-Private</b> — on Voytek's OneDrive; Andrea cannot see it.<br>
+       <b>👤 Andrea-Private</b> — on Andrea's OneDrive; Voytek cannot see it.</p>
+    <p>Receipts tagged <b>🔒 Personal</b> never appear in shared summaries, and this phone's totals are never synced to the other phone.</p>
+    <h3>💼 Work expenses</h3>
+    <p>Receipts flagged as Work are kept out of your budgets — they're tracked separately so they're easy to find when submitting for reimbursement. Search "work" in Receipts.</p>
+    <h3>🔐 Security</h3>
+    <p>Unlocking uses your Samsung fingerprint — the same security as unlocking your phone. <b>No biometric data is stored by this app</b>; your fingerprint never leaves the device. The 4-digit PIN is a backup. The app allows a 30-second grace period when you switch apps, and locks after 2 minutes of inactivity.</p>
+    <h3>🔒 Enabling your private folder</h3>
+    <p>Choose the <b>Personal</b> allocation when saving, then pick your own OneDrive folder (not the family one) in the share menu. The PC sorts everything else automatically.</p>
+  </div>
+</div>
+
+<input type="file" id="fileCamera" accept="image/*" capture="environment" hidden>
+<input type="file" id="fileGallery" accept="image/*" multiple hidden>
+
 <script>
-// ══════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════
-let state = {
-  name: '',
-  securityLevel: '',
-  pin: '',
-  credentialId: null,
-  receipts: [],
-  settings: { bucket: 'home', province: 'ON' },
-  lastUnlock: null,
-  setupComplete: false
+/* ================================================================
+   Family Budget — unified PWA
+   Data lives in localStorage; receipt photos are handed to OneDrive
+   (share sheet or download) with a structured filename the Python
+   OCR pipeline can parse:
+   FB_YYYYMMDD-HHMMSS_<alloc>_<category>_<vendor>_<amount>.jpg
+   ================================================================ */
+
+const CATEGORIES = [
+  /* Everyday */
+  { id: 'Groceries',            group: 'Everyday',      emoji: '🛒', color: '#7be0a8' },
+  { id: 'Gas / Fuel',           group: 'Everyday',      emoji: '⛽', color: '#6cc7ff' },
+  { id: 'Dining / Takeout',     group: 'Everyday',      emoji: '🍽️', color: '#ffb86c' },
+  { id: 'QSR On-the-Go',        group: 'Everyday',      emoji: '🥤', color: '#ffd166' },
+  { id: 'Beer / Wine / Liquor', group: 'Everyday',      emoji: '🍺', color: '#e6b45a' },
+  { id: 'Personal Care',        group: 'Everyday',      emoji: '🧴', color: '#f6a5c0' },
+  { id: 'Medical / Pharmacy',   group: 'Everyday',      emoji: '💊', color: '#ff8fa3' },
+  { id: 'Shopping / Apparel',   group: 'Everyday',      emoji: '🛍️', color: '#ffd166' },
+  /* Home */
+  { id: 'Utilities',            group: 'Home',          emoji: '💡', color: '#b78cff' },
+  { id: 'Home Cleaning Supplies', group: 'Home',        emoji: '🧽', color: '#9ad0f5' },
+  { id: 'Home Improvement',     group: 'Home',          emoji: '🔨', color: '#f4a261' },
+  { id: 'Home Maintenance',     group: 'Home',          emoji: '🧰', color: '#e0876a' },
+  /* Kids */
+  { id: 'Kids Clothes',         group: 'Kids',          emoji: '👕', color: '#8ecae6' },
+  { id: 'Kids School',          group: 'Kids',          emoji: '🎒', color: '#90dbf4' },
+  { id: 'Kids Camps',           group: 'Kids',          emoji: '🏕️', color: '#a3e4b7' },
+  { id: 'Kids Extracurricular', group: 'Kids',          emoji: '⚽', color: '#b5e48c' },
+  { id: 'Kids Outings',         group: 'Kids',          emoji: '🎡', color: '#ffd6a5' },
+  { id: 'Kids Friends Activities', group: 'Kids',       emoji: '🎈', color: '#ffadad' },
+  { id: 'Kids Food / Snacks',   group: 'Kids',          emoji: '🍿', color: '#fdffb6' },
+  /* Auto & Travel */
+  { id: 'Auto Services',        group: 'Auto & Travel', emoji: '🚗', color: '#6cc7ff' },
+  { id: 'Motorcycle',           group: 'Auto & Travel', emoji: '🏍️', color: '#f77f00' },
+  { id: 'Travel',               group: 'Auto & Travel', emoji: '✈️', color: '#64dfdf' },
+  { id: 'Insurance – Car',      group: 'Auto & Travel', emoji: '🛡️', color: '#a5b4d4' },
+  { id: 'Insurance – Motorcycle', group: 'Auto & Travel', emoji: '🛡️', color: '#8fa0c4' },
+  { id: 'Insurance – Home',     group: 'Auto & Travel', emoji: '🛡️', color: '#b8c0d8' },
+  /* Fun & Gifts */
+  { id: 'Family Entertainment', group: 'Fun & Gifts',   emoji: '🎬', color: '#e6a8ff' },
+  { id: 'TV / Music Subscriptions', group: 'Fun & Gifts', emoji: '📺', color: '#c39bd3' },
+  { id: 'Gifts – Family',       group: 'Fun & Gifts',   emoji: '🎁', color: '#ff9ecd' },
+  { id: 'Gifts – Friends (Adult)', group: 'Fun & Gifts', emoji: '🎁', color: '#f7a9c4' },
+  { id: 'Gifts – Friends (Kids)', group: 'Fun & Gifts', emoji: '🎁', color: '#fbc4ab' },
+  /* Fallback */
+  { id: 'Other',                group: 'Other',         emoji: '📦', color: '#94a3b8' },
+];
+const ALLOCS = ['Shared', 'Voytek', 'Andrea', 'Personal'];
+const FUNDS  = ['Joint', 'Voytek', 'Andrea', 'Split'];
+
+/* Mirrors the Canadian vendor table used by the PC OCR pipeline (Ontario-first) */
+const VENDOR_MAP = {
+  'real canadian superstore': 'Groceries', 'superstore': 'Groceries', 'rcss': 'Groceries',
+  'walmart': 'Groceries', 'costco': 'Groceries', 'loblaws': 'Groceries',
+  'fortinos': 'Groceries', 'zehrs': 'Groceries', 'freshco': 'Groceries',
+  'metro': 'Groceries', 'sobeys': 'Groceries', 'iga': 'Groceries',
+  'no frills': 'Groceries', 'food basics': 'Groceries', 'farm boy': 'Groceries',
+  'giant tiger': 'Groceries', 'bulk barn': 'Groceries', 'longo': 'Groceries',
+  'independent grocer': 'Groceries', 'valu-mart': 'Groceries', 'm&m food': 'Groceries',
+  'petro-canada': 'Gas / Fuel', 'petro canada': 'Gas / Fuel', 'esso': 'Gas / Fuel',
+  'shell': 'Gas / Fuel', 'ultramar': 'Gas / Fuel', 'pioneer': 'Gas / Fuel',
+  'tim hortons': 'QSR On-the-Go', 'mcdonald': 'QSR On-the-Go', 'subway': 'QSR On-the-Go',
+  'a&w': 'QSR On-the-Go', 'wendy': 'QSR On-the-Go', 'starbucks': 'QSR On-the-Go',
+  'harvey': 'QSR On-the-Go', 'popeyes': 'QSR On-the-Go',
+  'swiss chalet': 'Dining / Takeout', 'boston pizza': 'Dining / Takeout',
+  'the keg': 'Dining / Takeout', 'skip': 'Dining / Takeout', 'uber eats': 'Dining / Takeout',
+  'lcbo': 'Beer / Wine / Liquor', 'beer store': 'Beer / Wine / Liquor', 'saq': 'Beer / Wine / Liquor',
+  'canadian tire': 'Home Maintenance', 'home depot': 'Home Maintenance',
+  'rona': 'Home Maintenance', 'home hardware': 'Home Maintenance', 'lowes': 'Home Improvement',
+  'ikea': 'Home Improvement', 'dollarama': 'Home Cleaning Supplies',
+  'shoppers drug mart': 'Medical / Pharmacy', 'rexall': 'Medical / Pharmacy',
+  'pharmaprix': 'Medical / Pharmacy', 'jean coutu': 'Medical / Pharmacy',
+  'amazon': 'Shopping / Apparel', 'winners': 'Shopping / Apparel',
+  'marshalls': 'Shopping / Apparel', 'best buy': 'Shopping / Apparel',
+  'sport chek': 'Shopping / Apparel', "mark's": 'Shopping / Apparel',
+  'homesense': 'Shopping / Apparel', 'indigo': 'Shopping / Apparel',
+  'chapters': 'Shopping / Apparel', 'dollar tree': 'Home Cleaning Supplies',
+  'wine rack': 'Beer / Wine / Liquor', 'circle k': 'Gas / Fuel',
+  'old navy': 'Kids Clothes', 'carter': 'Kids Clothes', "children's place": 'Kids Clothes',
+  'cineplex': 'Family Entertainment', 'landmark': 'Family Entertainment',
+  'spotify': 'TV / Music Subscriptions', 'netflix': 'TV / Music Subscriptions',
+  'disney': 'TV / Music Subscriptions', 'crave': 'TV / Music Subscriptions',
+  'hydro one': 'Utilities', 'alectra': 'Utilities', 'enbridge': 'Utilities',
+  'bell': 'Utilities', 'rogers': 'Utilities', 'telus': 'Utilities',
+  'mr. lube': 'Auto Services', 'mr lube': 'Auto Services', 'jiffy lube': 'Auto Services',
+  'midas': 'Auto Services', 'kal tire': 'Auto Services',
+  'air canada': 'Travel', 'westjet': 'Travel', 'marriott': 'Travel', 'expedia': 'Travel',
 };
 
-let setupPin1 = '';
-let setupPin2 = '';
-let setupPinStep = 1;
-let lockPin = '';
+/* ---------------- storage ---------------- */
+const store = {
+  get tx()      { return JSON.parse(localStorage.getItem('fb.tx') || '[]'); },
+  set tx(v)     { localStorage.setItem('fb.tx', JSON.stringify(v)); },
+  get settings(){ return Object.assign({ budget: 4000, pbudget: 800, owner: 'Voytek', saveMethod: 'share', defaultAlloc: 'last', lastAlloc: 'Shared', onboarded: false, lockMode: 'none', pinHash: null, credId: null }, JSON.parse(localStorage.getItem('fb.settings') || '{}')); },
+  set settings(v){ localStorage.setItem('fb.settings', JSON.stringify(v)); },
+};
 
-function loadState() {
-  try {
-    const s = localStorage.getItem('fb_state');
-    if (s) state = { ...state, ...JSON.parse(s) };
-  } catch(e) {}
+/* ---------------- seed sample data on first run ---------------- */
+(function seed() {
+  if (localStorage.getItem('fb.tx') !== null) return;
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const d = (day) => new Date(y, m, Math.min(day, now.getDate())).toISOString().slice(0, 10);
+  store.tx = [
+    { id: 's1', date: d(1),  vendor: 'Fortinos',         amount: 86.42,  category: 'Groceries',            alloc: 'Shared',   fund: 'Joint',  sample: true },
+    { id: 's2', date: d(2),  vendor: 'Petro-Canada',     amount: 62.10,  category: 'Gas / Fuel',           alloc: 'Shared',   fund: 'Joint',  sample: true },
+    { id: 's3', date: d(3),  vendor: 'Tim Hortons',      amount: 11.35,  category: 'QSR On-the-Go',        alloc: 'Voytek',   fund: 'Voytek', sample: true },
+    { id: 's4', date: d(4),  vendor: 'Costco',           amount: 214.88, category: 'Groceries',            alloc: 'Shared',   fund: 'Joint',  sample: true },
+    { id: 's5', date: d(5),  vendor: 'Dollarama',        amount: 23.60,  category: 'Home Cleaning Supplies', alloc: 'Shared', fund: 'Joint',  sample: true },
+    { id: 's6', date: d(7),  vendor: 'Hydro One',        amount: 132.75, category: 'Utilities',            alloc: 'Shared',   fund: 'Joint',  sample: true },
+    { id: 's7', date: d(9),  vendor: 'Shoppers Drug Mart', amount: 34.19, category: 'Medical / Pharmacy',  alloc: 'Andrea',   fund: 'Andrea', sample: true },
+    { id: 's8', date: d(11), vendor: 'Swiss Chalet',     amount: 58.94,  category: 'Dining / Takeout',     alloc: 'Shared',   fund: 'Split',  sample: true },
+    { id: 's9', date: d(12), vendor: 'Amazon',           amount: 47.99,  category: 'Shopping / Apparel',   alloc: 'Voytek',   fund: 'Voytek', sample: true },
+    { id: 's10',date: d(14), vendor: 'Old Navy',         amount: 73.51,  category: 'Kids Clothes',         alloc: 'Shared',   fund: 'Joint',  sample: true },
+    { id: 's11',date: d(15), vendor: 'Cineplex',         amount: 42.00,  category: 'Family Entertainment', alloc: 'Shared',   fund: 'Split',  sample: true },
+    { id: 's12',date: d(17), vendor: 'Shell',            amount: 55.30,  category: 'Gas / Fuel',           alloc: 'Andrea',   fund: 'Andrea', sample: true },
+    { id: 's13',date: d(16), vendor: 'Indigo',           amount: 28.75,  category: 'Shopping / Apparel',   alloc: 'Personal', fund: 'Voytek', sample: true },
+    { id: 's14',date: d(13), vendor: 'Marriott',         amount: 289.00, category: 'Travel',               alloc: 'Voytek',   fund: 'Voytek', work: true, sample: true },
+  ];
+})();
+
+/* ---------------- helpers ---------------- */
+const $ = (s) => document.querySelector(s);
+const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
+const fmt = (n) => CAD.format(n);
+const fmt0 = (n) => CAD.format(n).replace(/\.\d\d$/, '');
+const catOf = (id) => CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+let viewMonth = todayISO().slice(0, 7);            // 'YYYY-MM'
+const isCurrentMonth = () => viewMonth === todayISO().slice(0, 7);
+const monthTx = () => store.tx.filter(t => t.date.startsWith(viewMonth))
+                              .sort((a, b) => b.date.localeCompare(a.date));
+
+function monthLabel(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
+}
+function shiftMonth(delta) {
+  const [y, m] = viewMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  viewMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  renderAll();
+}
+function niceDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+}
+function toast(msg) {
+  const el = $('#toast');
+  el.innerHTML = '<span class="tick">✓</span>' + msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-function saveState() {
-  try { localStorage.setItem('fb_state', JSON.stringify(state)); } catch(e) {}
-}
+/* ---------------- navigation ---------------- */
+const VIEW_TITLES = { home: 'Home', receipts: 'Receipts', charts: 'Spending analysis', settings: 'Settings' };
+let currentView = 'home';
 
-// ══════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════
-window.addEventListener('load', () => {
-  loadState();
-  if (!state.onboardingDone && !state.setupComplete) {
-    showScreen('onboarding-screen');
-  } else if (!state.setupComplete) {
-    showScreen('setup-welcome');
-  } else {
-    checkLock();
-  }
+function goTo(view) {
+  currentView = view;
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.view === view));
+  $('#screenTitle').textContent = VIEW_TITLES[view];
+  $('#monthNav').style.visibility = (view === 'settings') ? 'hidden' : 'visible';
+  renderAll();
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => goTo(t.dataset.view)));
+document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.goto)));
+$('#monthPrev').addEventListener('click', () => shiftMonth(-1));
+$('#monthNext').addEventListener('click', () => shiftMonth(1));
+
+/* ---------------- privacy scope: Shared vs Personal ----------------
+   Shared / Voytek / Andrea are all JOINT spending (the name = who
+   paid) and appear in the Shared view. "Personal" is the private
+   allocation: it appears only in this phone's personal view and its
+   photo uploads only to this person's own OneDrive folder. Data is
+   device-local, so nothing syncs between phones anyway.          */
+let scope = localStorage.getItem('fb.scope') || 'shared';
+function setScope(s) { scope = s; localStorage.setItem('fb.scope', s); renderAll(); }
+function renderScopeSeg(el) {
+  el.innerHTML = `
+    <button class="${scope === 'shared' ? 'on' : ''}" data-scope="shared">🤝 Shared</button>
+    <button class="${scope === 'personal' ? 'on' : ''}" data-scope="personal">🔒 Personal (${store.settings.owner})</button>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-scope]');
+  if (b) setScope(b.dataset.scope);
 });
+const scopedTx = () => monthTx().filter(t => !t.work &&
+  (scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal'));
+const scopeBudget = () => scope === 'shared'
+  ? (store.settings.budget || 0)
+  : (store.settings.pbudget || 0);
 
-// Inactivity timer — 2 minutes
-let inactivityTimer = null;
-const INACTIVITY_MS = 2 * 60 * 1000;
+/* ---------------- rendering: home ---------------- */
+const RING_R = 88, RING_C = 2 * Math.PI * RING_R;
 
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
-  if (state.setupComplete && state.securityLevel === 'every') {
-    inactivityTimer = setTimeout(() => {
-      if (document.visibilityState === 'visible') showLockScreen();
-      else state._lockOnReturn = true;
-    }, INACTIVITY_MS);
-  }
-}
+function renderHome() {
+  renderScopeSeg($('#homeSeg'));
+  const tx = scopedTx();
+  const spent = tx.reduce((s, t) => s + t.amount, 0);
+  const budget = scopeBudget();
 
-['touchstart','click','keydown','scroll'].forEach(evt =>
-  document.addEventListener(evt, resetInactivityTimer, { passive: true })
-);
+  $('#sampleBanner').hidden = !store.tx.some(t => t.sample);
 
-// Track when app was hidden to detect full-close vs quick switch
-let hiddenAt = null;
-const SWITCH_GRACE_MS = 30 * 1000; // 30 seconds — quick switch grace period
+  /* ring */
+  const pct = budget > 0 ? Math.min(spent / budget, 1) : 0;
+  const fill = $('#ringFill');
+  fill.setAttribute('stroke-dasharray', RING_C);
+  fill.setAttribute('stroke-dashoffset', RING_C * (1 - pct));
+  const overPace = (() => {
+    if (!isCurrentMonth() || budget === 0) return false;
+    const now = new Date();
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return spent / budget > now.getDate() / days + 0.08;
+  })();
+  fill.style.stroke = spent > budget ? 'var(--red)' : overPace ? 'var(--amber)' : 'var(--green)';
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    hiddenAt = Date.now();
-    clearTimeout(inactivityTimer);
-  }
-  if (document.visibilityState === 'visible' && state.setupComplete) {
-    const away = hiddenAt ? Date.now() - hiddenAt : 0;
-    hiddenAt = null;
-    const level = state.securityLevel;
-    if (level === 'none') return;
-    if (state._lockOnReturn) { state._lockOnReturn = false; showLockScreen(); return; }
-    // Only lock if away long enough to not be a quick app-switch
-    if (level === 'every' && away > SWITCH_GRACE_MS) { showLockScreen(); return; }
-    if (level === 'daily') {
-      const lastDate = new Date(state.lastUnlock||0).toDateString();
-      if (lastDate !== new Date().toDateString()) { showLockScreen(); return; }
-    }
-    if (level === 'session' && away > SWITCH_GRACE_MS) { showLockScreen(); return; }
-    resetInactivityTimer();
-  }
-});
-
-// ══════════════════════════════════════════
-// SCREEN NAVIGATION
-// ══════════════════════════════════════════
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id === 'home-screen') updateHome();
-  if (id === 'add-screen') initAddScreen();
-  if (id === 'settings-screen') initSettings();
-}
-
-// ══════════════════════════════════════════
-// SETUP FLOW
-// ══════════════════════════════════════════
-function setupNameNext() {
-  const name = document.getElementById('setup-name').value.trim();
-  if (!name) { showToast('Please enter your name'); return; }
-  state.name = name;
-  showScreen('setup-security');
-}
-
-let selectedSecurity = '';
-function selectSecurity(level, el) {
-  document.querySelectorAll('.security-option').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedSecurity = level;
-  document.getElementById('sec-next-btn').disabled = false;
-}
-
-function setupSecurityNext() {
-  if (!selectedSecurity) return;
-  state.securityLevel = selectedSecurity;
-  // Always show app info screen after security selection
-  showScreen('setup-appinfo');
-}
-
-function setupAppInfoNext() {
-  if (state.securityLevel === 'none') {
-    state.pin = '';
-    finishSetup();
+  /* pace tick: where spending "should" be today */
+  const pace = $('#ringPace');
+  if (isCurrentMonth()) {
+    const now = new Date();
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const ang = (now.getDate() / days) * 2 * Math.PI;      /* svg pre-rotated -90° */
+    const cx = 105, cy = 105;
+    pace.setAttribute('x1', cx + Math.cos(ang) * (RING_R - 11));
+    pace.setAttribute('y1', cy + Math.sin(ang) * (RING_R - 11));
+    pace.setAttribute('x2', cx + Math.cos(ang) * (RING_R + 11));
+    pace.setAttribute('y2', cy + Math.sin(ang) * (RING_R + 11));
+    pace.style.display = '';
   } else {
-    setupPinStep = 1;
-    setupPin1 = '';
-    setupPin2 = '';
-    document.getElementById('pin-setup-title').textContent = 'Create a 4-digit PIN';
-    document.getElementById('pin-setup-sub').textContent = 'Used as backup if biometrics aren\'t available.';
-    document.getElementById('setup-pin-error').textContent = '';
-    updatePinDots('setup', '');
-    showScreen('setup-pin');
+    pace.style.display = 'none';
   }
+
+  $('#ringSpent').textContent = fmt0(spent);
+  $('#ringBudget').textContent = 'of ' + fmt0(budget) +
+    (scope === 'shared' ? ' shared' : ' personal') + ' budget · ' + monthLabel(viewMonth);
+
+  const left = budget - spent;
+  const sl = $('#statLeft');
+  sl.textContent = fmt0(Math.abs(left)) + (left < 0 ? ' over' : '');
+  sl.className = 'stat-val ' + (left < 0 ? 'bad' : overPace ? 'warn' : 'good');
+
+  let perDay = '—';
+  if (isCurrentMonth() && left > 0) {
+    const now = new Date();
+    const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    perDay = fmt0(left / Math.max(days - now.getDate() + 1, 1));
+  }
+  $('#statPerDay').textContent = perDay;
+  $('#statCount').textContent = tx.length;
+
+  /* top categories */
+  renderCatBars($('#homeCats'), tx, 'category', 5);
+
+  /* recent */
+  const recent = tx.slice(0, 5);
+  $('#homeRecent').innerHTML = recent.length
+    ? recent.map(txRowHTML).join('')
+    : `<div class="empty"><div class="big">🧾</div>No ${scope === 'shared' ? 'shared' : 'personal'} receipts this month.<br>Tap <b style="color:var(--green)">+</b> to capture one.</div>`;
+  bindTxRows($('#homeRecent'));
 }
 
-function finishSetup() {
-  state.setupComplete = true;
-  state.lastUnlock = Date.now();
-  saveState();
-  // Try to register biometric
-  if (state.securityLevel !== 'none') {
-    registerBiometric().finally(() => {
-      showScreen('home-screen');
-      showToast('Welcome, ' + state.name + '! 🎉');
-    });
-  } else {
-    showScreen('home-screen');
-    showToast('Welcome, ' + state.name + '! 🎉');
-  }
+function catBarsData(tx, mode) {
+  const totals = {};
+  tx.forEach(t => {
+    const k = mode === 'category' ? t.category : mode === 'fund' ? (t.fund || 'Joint') : t.alloc;
+    totals[k] = (totals[k] || 0) + t.amount;
+  });
+  const sum = tx.reduce((s, t) => s + t.amount, 0) || 1;
+  return Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => ({ key: k, amt: v, pct: v / sum }));
 }
 
-// ══════════════════════════════════════════
-// PIN LOGIC
-// ══════════════════════════════════════════
-function updatePinDots(ctx, val) {
-  const prefix = ctx === 'setup' ? 'sd' : 'ld';
-  for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById(prefix + i);
-    if (dot) dot.classList.toggle('filled', i < val.length);
-  }
-}
-
-function pinKey(digit, ctx) {
-  if (ctx === 'setup') {
-    if (setupPinStep === 1) {
-      if (setupPin1.length >= 4) return;
-      setupPin1 += digit;
-      updatePinDots('setup', setupPin1);
-      if (setupPin1.length === 4) {
-        setTimeout(() => {
-          setupPinStep = 2;
-          setupPin2 = '';
-          document.getElementById('pin-setup-title').textContent = 'Confirm your PIN';
-          document.getElementById('pin-setup-sub').textContent = 'Enter the same PIN again.';
-          updatePinDots('setup', '');
-        }, 300);
-      }
-    } else {
-      if (setupPin2.length >= 4) return;
-      setupPin2 += digit;
-      updatePinDots('setup', setupPin2);
-      if (setupPin2.length === 4) {
-        setTimeout(() => {
-          if (setupPin1 === setupPin2) {
-            state.pin = setupPin1;
-            finishSetup();
-          } else {
-            document.getElementById('setup-pin-error').textContent = 'PINs don\'t match. Try again.';
-            setupPinStep = 1;
-            setupPin1 = '';
-            setupPin2 = '';
-            document.getElementById('pin-setup-title').textContent = 'Create a 4-digit PIN';
-            document.getElementById('pin-setup-sub').textContent = 'Used as backup if biometrics aren\'t available.';
-            updatePinDots('setup', '');
-          }
-        }, 300);
-      }
-    }
-  } else {
-    if (lockPin.length >= 4) return;
-    lockPin += digit;
-    updatePinDots('lock', lockPin);
-    if (lockPin.length === 4) {
-      setTimeout(() => {
-        if (lockPin === state.pin) {
-          unlock();
-        } else {
-          document.getElementById('lock-pin-error').textContent = 'Incorrect PIN. Try again.';
-          lockPin = '';
-          updatePinDots('lock', '');
-        }
-      }, 300);
-    }
-  }
-}
-
-function pinDelete(ctx) {
-  if (ctx === 'setup') {
-    if (setupPinStep === 1) { setupPin1 = setupPin1.slice(0,-1); updatePinDots('setup', setupPin1); }
-    else { setupPin2 = setupPin2.slice(0,-1); updatePinDots('setup', setupPin2); }
-  } else {
-    lockPin = lockPin.slice(0,-1);
-    updatePinDots('lock', lockPin);
-    document.getElementById('lock-pin-error').textContent = '';
-  }
-}
-
-// ══════════════════════════════════════════
-// BIOMETRIC (WebAuthn)
-// ══════════════════════════════════════════
-async function registerBiometric() {
-  if (!window.PublicKeyCredential) return;
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'Family Budget', id: location.hostname },
-        user: {
-          id: new TextEncoder().encode(state.name),
-          name: state.name,
-          displayName: state.name
-        },
-        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'required'
-        },
-        timeout: 60000
-      }
-    });
-    if (cred) {
-      state.credentialId = Array.from(new Uint8Array(cred.rawId));
-      saveState();
-    }
-  } catch(e) {
-    console.log('Biometric registration skipped:', e.message);
-  }
-}
-
-async function tryBiometric() {
-  if (!window.PublicKeyCredential) {
-    showToast('Biometrics not available on this device');
+function renderCatBars(el, tx, mode, limit) {
+  let rows = catBarsData(tx, mode);
+  if (limit) rows = rows.slice(0, limit);
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty">Nothing to show for ${monthLabel(viewMonth)}.</div>`;
     return;
   }
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const opts = {
-      publicKey: {
-        challenge,
-        timeout: 60000,
-        userVerification: 'required'
-      }
-    };
-    if (state.credentialId) {
-      opts.publicKey.allowCredentials = [{
-        type: 'public-key',
-        id: new Uint8Array(state.credentialId),
-        transports: ['internal']
-      }];
-    }
-    const assertion = await navigator.credentials.get(opts);
-    if (assertion) unlock();
-  } catch(e) {
-    if (e.name !== 'NotAllowedError') {
-      showToast('Biometric failed — use PIN');
-    }
-  }
-}
-
-// ══════════════════════════════════════════
-// LOCK / UNLOCK
-// ══════════════════════════════════════════
-function checkLock() {
-  const level = state.securityLevel;
-  if (level === 'none') { showScreen('home-screen'); return; }
-
-  const now = Date.now();
-  const last = state.lastUnlock || 0;
-
-  if (level === 'daily') {
-    const lastDate = new Date(last).toDateString();
-    const today = new Date().toDateString();
-    if (lastDate === today) { showScreen('home-screen'); return; }
-  }
-  if (level === 'session') {
-    // Always lock on new session (page load)
-  }
-
-  showLockScreen();
-}
-
-function showLockScreen() {
-  document.getElementById('lock-name').textContent = state.name || 'Welcome';
-  lockPin = '';
-  updatePinDots('lock', '');
-  document.getElementById('lock-pin-error').textContent = '';
-
-  // Hide biometric button if no credential registered
-  const hasBio = window.PublicKeyCredential && state.credentialId;
-  document.getElementById('bio-btn').style.display = hasBio ? 'flex' : 'none';
-
-  showScreen('lock-screen');
-
-  // Auto-trigger biometric if available
-  if (hasBio) setTimeout(tryBiometric, 500);
-}
-
-function unlock() {
-  state.lastUnlock = Date.now();
-  saveState();
-  lockPin = '';
-  showScreen('home-screen');
-}
-
-// ══════════════════════════════════════════
-// HOME
-// ══════════════════════════════════════════
-function renderDashboard(receipts, total) {
-  const section = document.getElementById('dashboard-section');
-  if (!receipts || receipts.length === 0) {
-    section.style.display = 'none';
-    return;
-  }
-  section.style.display = 'block';
-
-  const bucketMeta = {
-    home: { label: 'Home', icon: '🏠', color: '#00e5a0' },
-    work: { label: 'Work', icon: '💼', color: '#7c6af7' },
-    personal: { label: 'Personal', icon: '👤', color: '#ffb340' }
+  const max = rows[0].pct || 1;
+  const WHO_STYLE = {
+    Shared: ['🤝','var(--green)'], Joint: ['🤝','var(--green)'],
+    Voytek: ['🧑','#6cc7ff'], Andrea: ['👩','#e6a8ff'], Split: ['➗','var(--amber)'],
   };
-  const paidMeta = {
-    'Joint': { color: '#00e5a0' },
-    'Split 50/50': { color: '#7c6af7' }
-  };
-
-  // Category totals
-  const catTotals = {};
-  receipts.forEach(r => {
-    const b = r.bucket || 'home';
-    catTotals[b] = (catTotals[b] || 0) + (parseFloat(r.amount) || 0);
-  });
-
-  const catHtml = Object.entries(catTotals)
-    .sort((a,b) => b[1] - a[1])
-    .map(([key, amt]) => {
-      const meta = bucketMeta[key] || { label: key, icon: '🧾', color: '#8888aa' };
-      const pct = total > 0 ? Math.round((amt/total)*100) : 0;
-      return `
-        <div class="bar-row">
-          <div class="bar-row-top">
-            <div class="bar-row-label">${meta.icon} ${meta.label}</div>
-            <div class="bar-row-amount">$${amt.toFixed(2)}<span class="bar-row-pct">${pct}%</span></div>
+  el.innerHTML = rows.map(r => {
+    const [emoji, color] = mode === 'category'
+      ? [catOf(r.key).emoji, catOf(r.key).color]
+      : (WHO_STYLE[r.key] || ['👤','#94a3b8']);
+    return `
+      <div class="cat-row">
+        <div class="cat-icon">${emoji}</div>
+        <div class="cat-body">
+          <div class="cat-top">
+            <span class="cat-name">${r.key}</span>
+            <span class="cat-amt">${fmt(r.amt)}<span class="cat-pct">${Math.round(r.pct * 100)}%</span></span>
           </div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${meta.color}"></div></div>
-        </div>`;
-    }).join('');
-  document.getElementById('category-bars').innerHTML = catHtml;
-
-  // Paid-by totals
-  const paidTotals = {};
-  receipts.forEach(r => {
-    const p = r.paid || 'Joint';
-    paidTotals[p] = (paidTotals[p] || 0) + (parseFloat(r.amount) || 0);
-  });
-
-  const paidHtml = Object.entries(paidTotals)
-    .sort((a,b) => b[1] - a[1])
-    .map(([key, amt]) => {
-      const color = (paidMeta[key] || {}).color || '#ff8fb0';
-      const pct = total > 0 ? Math.round((amt/total)*100) : 0;
-      return `
-        <div class="bar-row">
-          <div class="bar-row-top">
-            <div class="bar-row-label">${key}</div>
-            <div class="bar-row-amount">$${amt.toFixed(2)}<span class="bar-row-pct">${pct}%</span></div>
-          </div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
-        </div>`;
-    }).join('');
-  document.getElementById('paidby-bars').innerHTML = paidHtml;
+          <div class="cat-bar"><i style="width:${(r.pct / max) * 100}%;background:${color}"></i></div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
-function updateHome() {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('home-greeting').textContent = greeting + ', ' + (state.name || '');
-  document.getElementById('home-date').textContent = new Date().toLocaleDateString('en-CA', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-
-  const now = new Date();
-  const monthReceipts = (state.receipts || []).filter(r => {
-    const d = new Date(r.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  const total = monthReceipts.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-  document.getElementById('stat-month').textContent = '$' + total.toFixed(2);
-  document.getElementById('stat-count').textContent = (state.receipts||[]).length;
-
-  renderDashboard(monthReceipts, total);
-
-  const list = document.getElementById('receipt-list');
-  if (!state.receipts || state.receipts.length === 0) {
-    list.innerHTML = '<div class="empty-state">No receipts yet.<br>Tap Add Receipt to get started.</div>';
-    return;
-  }
-  const bucketIcon = { home:'🏠', work:'💼', personal:'👤' };
-  list.innerHTML = [...state.receipts].reverse().slice(0,20).map(r => `
-    <div class="receipt-item">
-      <div class="receipt-icon">${bucketIcon[r.bucket]||'🧾'}</div>
-      <div>
-        <div class="receipt-vendor">${r.vendor||'Unknown'}</div>
-        <div class="receipt-meta">${r.date} · ${r.bucket} · ${r.paid}</div>
+/* ---------------- rendering: receipts ---------------- */
+function txRowHTML(t) {
+  const c = catOf(t.category);
+  return `
+    <button class="tx-row" data-id="${t.id}">
+      <div class="cat-icon">${c.emoji}</div>
+      <div class="tx-body">
+        <div class="tx-vendor">${t.vendor || 'Receipt'}${t.work ? '<span class="work-badge">💼 WORK</span>' : ''}</div>
+        <div class="tx-meta">${t.category}<span class="alloc-tag">${t.alloc}</span></div>
       </div>
-      <div class="receipt-amount">$${parseFloat(r.amount||0).toFixed(2)}</div>
-    </div>
-  `).join('');
+      <div class="tx-right">
+        <div class="tx-amt">${fmt(t.amount)}</div>
+        <div class="tx-date">${niceDate(t.date)}</div>
+      </div>
+    </button>`;
 }
-
-// ══════════════════════════════════════════
-// ADD RECEIPT
-// ══════════════════════════════════════════
-function initAddScreen() {
-  document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('chip-me').textContent = state.name || 'Me';
-  document.getElementById('add-vendor').value = '';
-  document.getElementById('add-amount').value = '';
-  document.getElementById('photo-preview').style.display = 'none';
+function bindTxRows(scope) {
+  scope.querySelectorAll('.tx-row').forEach(r =>
+    r.addEventListener('click', () => openCatSheet({ editId: r.dataset.id })));
 }
-
-function selectChip(el, group) {
-  el.closest('.chip-row').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
+function renderReceipts() {
+  renderScopeSeg($('#receiptsSeg'));
+  const q = ($('#searchInput').value || '').trim().toLowerCase();
+  /* scope filter — unlike dashboards, Work receipts stay visible here */
+  let tx = monthTx().filter(t =>
+    scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal');
+  if (q) tx = tx.filter(t =>
+    (t.vendor || '').toLowerCase().includes(q) ||
+    t.category.toLowerCase().includes(q) ||
+    t.alloc.toLowerCase().includes(q) ||
+    (t.fund || '').toLowerCase().includes(q) ||
+    (q === 'work' && t.work));
+  $('#receiptsList').innerHTML = tx.length
+    ? tx.map(txRowHTML).join('')
+    : `<div class="empty"><div class="big">🔍</div>No receipts${q ? ' matching “' + q + '”' : ''} in ${monthLabel(viewMonth)}.</div>`;
+  bindTxRows($('#receiptsList'));
 }
+$('#searchInput').addEventListener('input', renderReceipts);
 
-function photoSelected(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = document.getElementById('photo-preview');
-    img.src = e.target.result;
-    img.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
-
-function saveReceipt() {
-  const vendor = document.getElementById('add-vendor').value.trim();
-  const amount = document.getElementById('add-amount').value;
-  const date = document.getElementById('add-date').value;
-  if (!vendor || !amount || !date) { showToast('Please fill in vendor, amount and date'); return; }
-
-  const bucket = document.querySelector('#add-screen .chip-row:nth-child(1) .chip.active')?.textContent.replace(/[🏠💼👤]/g,'').trim().toLowerCase() || 'home';
-  const paid = document.querySelector('#add-screen .chip-row:nth-child(2) .chip.active')?.textContent.trim() || 'Joint';
-
-  if (!state.receipts) state.receipts = [];
-  state.receipts.push({ vendor, amount: parseFloat(amount), date, bucket, paid, id: Date.now() });
-  saveState();
-  showToast('Receipt saved ✓');
-  showScreen('home-screen');
-}
-
-// ══════════════════════════════════════════
-// SETTINGS
-// ══════════════════════════════════════════
-function initSettings() {
-  document.getElementById('settings-name').value = state.name || '';
-  document.getElementById('settings-bucket').value = state.settings?.bucket || 'home';
-  document.getElementById('settings-province').value = state.settings?.province || 'ON';
-  document.getElementById('settings-lock').value = state.securityLevel || 'every';
-}
-
-function saveSettings() {
-  state.name = document.getElementById('settings-name').value.trim() || state.name;
-  state.settings.bucket = document.getElementById('settings-bucket').value;
-  state.settings.province = document.getElementById('settings-province').value;
-  const newLevel = document.getElementById('settings-lock').value;
-  if (newLevel !== state.securityLevel) {
-    state.securityLevel = newLevel;
-    if (newLevel !== 'none' && !state.credentialId) registerBiometric();
+/* ---------------- rendering: charts ---------------- */
+function renderCharts() {
+  renderScopeSeg($('#chartSeg'));
+  renderTrend();
+  renderCatBars($('#chartList'), scopedTx(), 'category', 0);
+  const allocCard = $('#chartAllocCard');
+  if (scope === 'shared') {
+    allocCard.hidden = false;
+    renderCatBars($('#chartAllocList'), scopedTx(), 'fund', 0);
+  } else {
+    allocCard.hidden = true;
   }
-  saveState();
-  showToast('Settings saved ✓');
 }
 
-function changePin() {
-  setupPinStep = 1;
-  setupPin1 = '';
-  setupPin2 = '';
-  document.getElementById('pin-setup-title').textContent = 'Create new PIN';
-  document.getElementById('pin-setup-sub').textContent = '';
-  document.getElementById('setup-pin-error').textContent = '';
-  updatePinDots('setup', '');
-  showScreen('setup-pin');
+/* 6-month spending trend ending at the viewed month */
+function renderTrend() {
+  const [y, m] = viewMonth.split('-').map(Number);
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(y, m - 1 - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const sums = months.map(ym => store.tx
+    .filter(t => t.date.startsWith(ym) && !t.work &&
+      (scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal'))
+    .reduce((s, t) => s + t.amount, 0));
+  const max = Math.max(...sums, 1);
+  $('#trendBars').innerHTML = months.map((ym, i) => `
+    <div class="tcol${ym === viewMonth ? ' now' : ''}">
+      <div class="tamt">${sums[i] ? fmt0(sums[i]) : ''}</div>
+      <div class="tbar"><i style="height:${Math.max((sums[i] / max) * 100, sums[i] ? 3 : 0)}%"></i></div>
+      <div class="tlab">${monthLabel(ym).split(' ')[0]}</div>
+    </div>`).join('');
 }
 
-function resetApp() {
-  if (!confirm('This will delete all your receipts and settings. Are you sure?')) return;
-  localStorage.removeItem('fb_state');
-  location.reload();
+/* ---------------- settings ---------------- */
+function renderSettings() {
+  const s = store.settings;
+  $('#ownerInput').value = s.owner;
+  $('#budgetInput').value = s.budget;
+  $('#pbudgetInput').value = s.pbudget;
+  $('#saveMethod').value = s.saveMethod;
+  $('#defaultAlloc').value = s.defaultAlloc;
+  $('#lockModeInput').value = s.lockMode;
+  $('#bioRegBtn').textContent = s.credId ? 'Re-register' : 'Register';
+  $('#changePinBtn').textContent = s.pinHash ? 'Change' : 'Set PIN';
+}
+$('#ownerInput').addEventListener('change', e => {
+  const s = store.settings; s.owner = e.target.value; store.settings = s;
+  toast('Personal view set to ' + s.owner); renderAll();
+});
+$('#budgetInput').addEventListener('change', e => {
+  const s = store.settings; s.budget = Math.max(0, Number(e.target.value) || 0); store.settings = s; renderAll();
+});
+$('#pbudgetInput').addEventListener('change', e => {
+  const s = store.settings; s.pbudget = Math.max(0, Number(e.target.value) || 0); store.settings = s; renderAll();
+});
+$('#saveMethod').addEventListener('change', e => { const s = store.settings; s.saveMethod = e.target.value; store.settings = s; });
+$('#defaultAlloc').addEventListener('change', e => { const s = store.settings; s.defaultAlloc = e.target.value; store.settings = s; });
+
+function clearSample() {
+  store.tx = store.tx.filter(t => !t.sample);
+  toast('Sample data cleared');
+  renderAll();
+}
+$('#clearSampleBtn').addEventListener('click', clearSample);
+$('#settingsClearSample').addEventListener('click', clearSample);
+$('#settingsClearAll').addEventListener('click', () => {
+  if (confirm('Erase every transaction stored on this phone? Receipt photos already in OneDrive are not affected.')) {
+    store.tx = []; toast('All transactions erased'); renderAll();
+  }
+});
+
+/* ---------------- sheets ---------------- */
+const backdrop = $('#backdrop');
+function openSheet(el)  { backdrop.classList.add('open'); el.classList.add('open'); }
+function closeSheets()  {
+  backdrop.classList.remove('open');
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+}
+backdrop.addEventListener('click', closeSheets);
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeSheets));
+
+/* ---------------- capture flow ---------------- */
+$('#fabBtn').addEventListener('click', () => openSheet($('#captureSheet')));
+$('#btnCamera').addEventListener('click', () => $('#fileCamera').click());
+$('#btnGallery').addEventListener('click', () => $('#fileGallery').click());
+$('#btnManual').addEventListener('click', () => { closeSheets(); setTimeout(() => openCatSheet({}), 180); });
+
+let queue = [];          // File objects waiting to be categorized
+let qIndex = 0;
+let editing = null;      // transaction id when editing
+let currentFile = null;  // File for the receipt on screen
+let currentThumbURL = null;
+
+$('#fileCamera').addEventListener('change', e => startQueue([...e.target.files]));
+$('#fileGallery').addEventListener('change', e => startQueue([...e.target.files]));
+
+function startQueue(files) {
+  if (!files.length) return;
+  queue = files; qIndex = 0;
+  $('#fileCamera').value = ''; $('#fileGallery').value = '';
+  closeSheets();
+  setTimeout(() => openCatSheet({ file: queue[0] }), 180);
 }
 
-// ══════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+/* build chips once */
+(function buildChips() {
+  $('#allocChips').innerHTML = ALLOCS.map(a =>
+    `<button class="chip" data-alloc="${a}">${a === 'Personal' ? '🔒 Personal' : a}</button>`).join('');
+  $('#fundChips').innerHTML = FUNDS.map(f =>
+    `<button class="chip" data-fund="${f}">${f === 'Split' ? '➗ Split 50/50' : f}</button>`).join('');
+
+  /* grouped category grid */
+  let lastGroup = null, catHTML = '';
+  CATEGORIES.forEach(c => {
+    if (c.group !== lastGroup) {
+      catHTML += `<div class="cat-group-label">${c.group}</div>`;
+      lastGroup = c.group;
+    }
+    catHTML += `<button class="cat-chip" data-cat="${c.id}"><span class="ce">${c.emoji}</span>${c.id}</button>`;
+  });
+  $('#catChips').innerHTML = catHTML;
+
+  rebuildVendorList();
+
+  $('#allocChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    selectAlloc(b.dataset.alloc);
+  });
+  $('#fundChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    selectFund(b.dataset.fund, false);
+  });
+  $('#workToggle').addEventListener('click', () =>
+    setWork(!$('#workToggle').classList.contains('on')));
+  $('#catChips').addEventListener('click', e => {
+    const b = e.target.closest('.cat-chip'); if (!b) return;
+    selectCat(b.dataset.cat, false);
+  });
+  $('#fVendor').addEventListener('input', autoCategorize);
+})();
+
+function selectFund(f, isAuto) {
+  document.querySelectorAll('#fundChips .chip').forEach(c => c.classList.toggle('on', c.dataset.fund === f));
+  $('#fundAuto').classList.toggle('show', !!isAuto);
+}
+function selectedFund() { return document.querySelector('#fundChips .chip.on')?.dataset.fund || 'Joint'; }
+function setWork(on) { $('#workToggle').classList.toggle('on', on); }
+function isWork() { return $('#workToggle').classList.contains('on'); }
+
+function selectAlloc(a) {
+  document.querySelectorAll('#allocChips .chip').forEach(c => c.classList.toggle('on', c.dataset.alloc === a));
+  /* smart funding default: Shared→Joint, person→that person, Personal→phone owner */
+  selectFund(a === 'Shared' ? 'Joint' : a === 'Personal' ? store.settings.owner : a, true);
+  const hint = $('#allocHint');
+  hint.classList.add('show');
+  if (a === 'Personal') {
+    hint.classList.add('lock');
+    hint.textContent = '🔒 Private — only shows in your personal view. When sharing, pick YOUR OWN OneDrive folder (' + store.settings.owner + "'s), not the family one.";
+  } else {
+    hint.classList.remove('lock');
+    hint.textContent = a === 'Shared'
+      ? 'Joint expense from the shared account — visible to both of you.'
+      : 'Joint expense paid by ' + a + ' — visible to both of you.';
+  }
+}
+function selectCat(id, isAuto) {
+  document.querySelectorAll('#catChips .cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === id));
+  $('#autoTag').classList.toggle('show', !!isAuto);
+}
+function selectedAlloc() { return document.querySelector('#allocChips .chip.on')?.dataset.alloc || 'Shared'; }
+function selectedCat()   { return document.querySelector('#catChips .cat-chip.on')?.dataset.cat || 'Other'; }
+
+/* ---------------- learned vendors ----------------
+   Every vendor you save is remembered on this phone with its
+   category, appears in the dropdown next time, and is matched
+   by the OCR — so "Superstore" only needs teaching once.     */
+const learnedVendors = {
+  get all()  { return JSON.parse(localStorage.getItem('fb.vendors') || '{}'); },
+  learn(name, cat) {
+    name = (name || '').trim();
+    if (name.length < 3) return;
+    const v = this.all; v[name] = cat;
+    localStorage.setItem('fb.vendors', JSON.stringify(v));
+    rebuildVendorList();
+  },
+};
+
+function rebuildVendorList() {
+  const builtIn = Object.keys(VENDOR_MAP).map(v => v.replace(/\b\w/g, ch => ch.toUpperCase()));
+  const names = [...new Set([...Object.keys(learnedVendors.all), ...builtIn])].sort();
+  $('#vendorList').innerHTML = names.map(v => `<option value="${v}">`).join('');
 }
 
-// ══════════════════════════════════════════
-// SERVICE WORKER
-// ══════════════════════════════════════════
+/* fuzzy match: Dice coefficient on character bigrams —
+   catches OCR garble like "Superst0re" or "Rea1 Canadian"  */
+function _bigrams(s) { const b = new Set(); for (let i = 0; i < s.length - 1; i++) b.add(s.slice(i, i + 2)); return b; }
+function similarity(a, b) {
+  const A = _bigrams(a), B = _bigrams(b);
+  if (!A.size || !B.size) return 0;
+  let inter = 0; A.forEach(x => { if (B.has(x)) inter++; });
+  return (2 * inter) / (A.size + B.size);
+}
+
+/* All known vendors as [matchKeyLower, displayName, category] */
+function vendorCandidates() {
+  const out = [];
+  for (const [name, cat] of Object.entries(learnedVendors.all))
+    out.push([name.toLowerCase(), name, cat]);
+  for (const [key, cat] of Object.entries(VENDOR_MAP))
+    out.push([key, key.replace(/\b\w/g, ch => ch.toUpperCase()), cat]);
+  return out;
+}
+
+/* Match OCR text to a known vendor: exact substring first,
+   then fuzzy per-line against the receipt header lines. */
+function matchKnownVendor(fullTextLower, headerLines) {
+  const cands = vendorCandidates();
+  for (const [key, name, cat] of cands)
+    if (key.length >= 3 && fullTextLower.includes(key)) return { name, cat };
+  let best = null, bestScore = 0.62;               /* threshold */
+  for (const line of headerLines.slice(0, 6)) {
+    const l = line.toLowerCase().replace(/[^a-z0-9& ]+/g, ' ').trim();
+    if (l.length < 4) continue;
+    for (const [key, name, cat] of cands) {
+      if (key.length < 4) continue;
+      const s = similarity(l, key);
+      if (s > bestScore) { bestScore = s; best = { name, cat }; }
+    }
+  }
+  return best;
+}
+
+function autoCategorize() {
+  const v = $('#fVendor').value.trim().toLowerCase();
+  if (!v) return;
+  /* learned vendors first — the human taught us these */
+  for (const [name, cat] of Object.entries(learnedVendors.all)) {
+    const n = name.toLowerCase();
+    if (v === n || v.includes(n) || (n.includes(v) && v.length >= 3)) { selectCat(cat, true); return; }
+  }
+  for (const [key, cat] of Object.entries(VENDOR_MAP)) {
+    if (v.includes(key) || key.includes(v) && v.length >= 3) { selectCat(cat, true); return; }
+  }
+}
+
+/* ================================================================
+   ON-PHONE OCR — Tesseract.js draft pass.
+   Free, runs entirely on the phone (photo never leaves the device).
+   The PC's easyocr pass remains authoritative for the Excel books;
+   this only pre-fills the sheet so saving is confirm-and-go.
+   ================================================================ */
+let ocrWorkerP = null;
+function getOcrWorker() {
+  if (!window.Tesseract) return null;                 /* CDN blocked/offline first run */
+  if (!ocrWorkerP) ocrWorkerP = Tesseract.createWorker('eng');
+  return ocrWorkerP;
+}
+
+/* Downscale for speed — OCR on a 1600px-wide image is ~3× faster
+   than on a full 50 MP capture with no practical accuracy loss. */
+function scaledBlob(file, maxW = 1600) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, maxW / img.width);
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * sc);
+      c.height = Math.round(img.height * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b => resolve(b || file), 'image/jpeg', 0.85);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/* Same normalization tricks as receipt_ocr.py, in miniature */
+function cleanOcrText(text) {
+  return text
+    .replace(/(^|\s)S\s?(?=\d{1,4}[ .,]\d{2}\b)/g, '$1$$')   /* "S36.24" → "$36.24" */
+    .replace(/(\d)\s+([.,]\d{2}\b)/g, '$1$2')                /* "36 .24" → "36.24"  */
+    .replace(/(\d)[,](\d{2}\b)/g, '$1.$2');                  /* "36,24" → "36.24"   */
+}
+
+function parseReceiptText(raw) {
+  const text = cleanOcrText(raw);
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const out = { vendor: '', amount: null, date: null };
+
+  /* vendor: learned + built-in Canadian vendors, exact then fuzzy —
+     a garbled "Rea1 Canadian Superst0re" still resolves correctly */
+  const lower = text.toLowerCase();
+  const hit = matchKnownVendor(lower, lines);
+  if (hit) {
+    out.vendor = hit.name;
+    out.vendorCat = hit.cat;
+  }
+  /* fallback: first line that looks like a name, not numbers */
+  if (!out.vendor) {
+    const guess = lines.slice(0, 5).find(l =>
+      /[a-z]{3,}/i.test(l) && !/\d{2}[.,]\d{2}/.test(l) && l.length <= 32);
+    if (guess) out.vendor = guess.replace(/[^\w&' .-]/g, '').trim();
+  }
+
+  /* amount: multi-pass like the PC pipeline —
+     1) TOTAL-keyword lines  2) tender lines  3) largest value */
+  const money = (s) => {
+    const m = [...s.matchAll(/\$?\s?(\d{1,4}\.\d{2})\b/g)].map(x => Number(x[1]));
+    return m.length ? m[m.length - 1] : null;
+  };
+  const isTotalLine  = (l) => /(grand\s*total|total|amount\s*due|balance\s*due)/i.test(l) && !/sub\s*total|subtotal/i.test(l);
+  const isTenderLine = (l) => /(visa|mastercard|debit|interac|tender|purchase|credit)/i.test(l);
+  for (const l of lines) { if (isTotalLine(l))  { const v = money(l); if (v) { out.amount = v; break; } } }
+  if (out.amount == null)
+    for (const l of lines) { if (isTenderLine(l)) { const v = money(l); if (v) { out.amount = v; break; } } }
+  if (out.amount == null) {
+    const all = [...text.matchAll(/\$?\s?(\d{1,4}\.\d{2})\b/g)].map(x => Number(x[1]));
+    if (all.length) out.amount = Math.max(...all);
+  }
+
+  /* date: ISO, slashed, or "Jan 5 2026" styles; ignore implausible */
+  const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+  const dmy = text.match(/\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b/);
+  const mon = text.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d{2})\b/i);
+  let d = null;
+  if (iso)      d = new Date(+iso[1], +iso[2] - 1, +iso[3]);
+  else if (dmy) d = new Date(+dmy[3], (+dmy[2] > 12 ? +dmy[1] : +dmy[2]) - 1, (+dmy[2] > 12 ? +dmy[2] : +dmy[1]));
+  else if (mon) d = new Date(`${mon[1]} ${mon[2]}, ${mon[3]}`);
+  if (d && !isNaN(d)) {
+    const age = (Date.now() - d.getTime()) / 86400000;
+    if (age >= -1 && age < 370)
+      out.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return out;
+}
+
+let ocrRun = 0;                     /* token — ignore stale results */
+async function runPhoneOcr(file) {
+  const my = ++ocrRun;
+  const sub = $('#sheetSub');
+  const workerP = getOcrWorker();
+  if (!workerP) { sub.textContent = 'Photo goes to OneDrive when you save'; return; }
+  sub.textContent = '🔍 Reading receipt…';
+  try {
+    const worker = await workerP;
+    const { data } = await worker.recognize(await scaledBlob(file));
+    if (my !== ocrRun) return;                        /* user moved on */
+    const r = parseReceiptText(data.text || '');
+    let got = 0;
+    if (r.vendor && !$('#fVendor').value) {
+      $('#fVendor').value = r.vendor;
+      if (r.vendorCat) selectCat(r.vendorCat, true); else autoCategorize();
+      got++;
+    }
+    if (r.amount != null && !$('#fAmount').value) { $('#fAmount').value = r.amount.toFixed(2); got++; }
+    if (r.date) { $('#fDate').value = r.date; got++; }
+    sub.textContent = got
+      ? '✓ Auto-read from photo — confirm & save (PC re-verifies later)'
+      : "Couldn't read this one — enter details manually";
+  } catch (e) {
+    if (my === ocrRun) sub.textContent = 'Photo goes to OneDrive when you save';
+    ocrWorkerP = null;                                /* retry fresh next time */
+  }
+}
+
+function openCatSheet({ file, editId } = {}) {
+  ocrRun++;                         /* cancel any in-flight OCR fill */
+  editing = editId || null;
+  currentFile = file || null;
+
+  if (currentThumbURL) { URL.revokeObjectURL(currentThumbURL); currentThumbURL = null; }
+  const thumb = $('#sheetThumb');
+  if (file) {
+    currentThumbURL = URL.createObjectURL(file);
+    thumb.src = currentThumbURL; thumb.hidden = false;
+  } else { thumb.hidden = true; }
+
+  const s = store.settings;
+
+  if (editing) {
+    const t = store.tx.find(x => x.id === editing);
+    if (!t) return;
+    $('#sheetTitle').textContent = 'Edit receipt';
+    $('#sheetSub').textContent = (t.vendor || 'Receipt') + ' · ' + niceDate(t.date);
+    $('#fVendor').value = t.vendor || '';
+    $('#fAmount').value = t.amount;
+    $('#fDate').value = t.date;
+    selectAlloc(t.alloc); selectCat(t.category, false);
+    selectFund(t.fund || 'Joint', false); setWork(!!t.work);
+    $('#saveBtn').textContent = 'Save changes';
+    $('#saveAddBtn').hidden = true;
+    $('#deleteBtn').hidden = false;
+  } else {
+    const n = queue.length > 1 ? ` · ${qIndex + 1} of ${queue.length}` : '';
+    $('#sheetTitle').textContent = (file ? 'Categorize receipt' : 'New receipt') + n;
+    $('#sheetSub').textContent = file
+      ? 'Photo goes to your OneDrive inbox when you save'
+      : 'Recorded on this phone only — no photo';
+    $('#fVendor').value = '';
+    $('#fAmount').value = '';
+    $('#fDate').value = todayISO();
+    selectAlloc(s.defaultAlloc === 'last' ? s.lastAlloc : s.defaultAlloc);
+    setWork(false);
+    selectCat('Groceries', false);
+    $('#autoTag').classList.remove('show');
+    $('#saveBtn').textContent = 'Save receipt';
+    $('#saveAddBtn').hidden = false;
+    $('#deleteBtn').hidden = true;
+    if (file) runPhoneOcr(file);
+  }
+  openSheet($('#catSheet'));
+}
+
+/* ---------------- saving ---------------- */
+function slug(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'receipt'; }
+
+function buildFilename(t) {
+  /* Established pipeline convention:
+     FB_<alloc>_<cat>_<cents>_<timestamp>[_<fund>_<bucket>].jpg
+     receipt_ocr.py splits on "_" — first five tokens unchanged,
+     fund + bucket appended for the workbook router. */
+  const stamp = t.date.replace(/-/g, '') + '-' +
+    new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+  const alloc = t.alloc === 'Personal'
+    ? 'personal-' + slug(store.settings.owner)
+    : slug(t.alloc);
+  const cents = Math.round((t.amount || 0) * 100);
+  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}.jpg`;
+}
+
+async function exportPhoto(file, t) {
+  const name = buildFilename(t);
+  const renamed = new File([file], name, { type: file.type || 'image/jpeg' });
+  const s = store.settings;
+
+  if (s.saveMethod === 'share' && navigator.canShare && navigator.canShare({ files: [renamed] })) {
+    try {
+      await navigator.share({ files: [renamed], title: 'Receipt' });
+      return 'shared';
+    } catch (err) {
+      if (err.name === 'AbortError') return 'cancelled';
+      /* fall through to download */
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(renamed);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return 'downloaded';
+}
+
+async function saveCurrent(addAnother) {
+  const t = {
+    id: editing || ('t' + Date.now() + Math.random().toString(36).slice(2, 6)),
+    date: $('#fDate').value || todayISO(),
+    vendor: $('#fVendor').value.trim(),
+    amount: Math.max(0, Number($('#fAmount').value) || 0),
+    category: selectedCat(),
+    alloc: selectedAlloc(),
+    fund: selectedFund(),
+    work: isWork(),
+  };
+
+  const all = store.tx;
+  if (editing) {
+    const i = all.findIndex(x => x.id === editing);
+    if (i > -1) all[i] = { ...all[i], ...t };
+  } else {
+    all.push(t);
+  }
+  store.tx = all;
+
+  const s = store.settings; s.lastAlloc = t.alloc; store.settings = s;
+
+  /* remember this vendor + category for dropdown, auto-category, and OCR */
+  learnedVendors.learn(t.vendor, t.category);
+
+  let note = editing ? 'Receipt updated' : 'Receipt saved';
+  if (currentFile && !editing) {
+    const how = await exportPhoto(currentFile, t);
+    if (how === 'shared')     note = 'Saved — photo sent to OneDrive';
+    if (how === 'downloaded') note = 'Saved — photo in Downloads';
+    if (how === 'cancelled')  note = 'Saved here — photo not exported';
+  }
+  toast(note);
+
+  /* advance the multi-receipt queue */
+  qIndex++;
+  if (!editing && qIndex < queue.length) {
+    openCatSheet({ file: queue[qIndex] });
+  } else if (addAnother && !editing) {
+    queue = []; qIndex = 0;
+    closeSheets();
+    setTimeout(() => openSheet($('#captureSheet')), 200);
+  } else {
+    queue = []; qIndex = 0;
+    closeSheets();
+  }
+  editing = null; currentFile = null;
+  renderAll();
+}
+$('#saveBtn').addEventListener('click', () => saveCurrent(false));
+$('#saveAddBtn').addEventListener('click', () => saveCurrent(true));
+$('#deleteBtn').addEventListener('click', () => {
+  if (!editing) return;
+  if (!confirm('Delete this receipt from the app? The photo in OneDrive is not affected.')) return;
+  store.tx = store.tx.filter(x => x.id !== editing);
+  editing = null;
+  toast('Receipt deleted');
+  closeSheets(); renderAll();
+});
+
+/* ---------------- render all ---------------- */
+function renderAll() {
+  $('#monthLabel').textContent = monthLabel(viewMonth);
+  $('#monthNext').disabled = isCurrentMonth();
+  $('#monthNext').style.opacity = isCurrentMonth() ? .3 : 1;
+  if (currentView === 'home') renderHome();
+  if (currentView === 'receipts') renderReceipts();
+  if (currentView === 'charts') renderCharts();
+  if (currentView === 'settings') renderSettings();
+}
+
+/* ================================================================
+   SECURITY — WebAuthn biometric + PIN, lock frequency, grace rules
+   ================================================================ */
+async function shaPin(pin) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('fb·' + pin));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function registerBiometric() {
+  try {
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'Family Budget', id: location.hostname },
+      user: {
+        id: new TextEncoder().encode('fb-' + store.settings.owner),
+        name: store.settings.owner, displayName: store.settings.owner,
+      },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000, attestation: 'none',
+    }});
+    const s = store.settings;
+    s.credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+    store.settings = s;
+    return true;
+  } catch (e) { return false; }
+}
+
+async function verifyBiometric() {
+  const id = store.settings.credId;
+  if (!id) return false;
+  try {
+    await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: Uint8Array.from(atob(id), c => c.charCodeAt(0)), transports: ['internal'] }],
+      userVerification: 'required', timeout: 60000,
+    }});
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ----- lock screen ----- */
+let pinEntry = '';
+function drawPinDots() {
+  $('#pinDots').innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < pinEntry.length ? 'fill' : ''}"></i>`).join('');
+}
+(function buildPinPad() {
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  $('#pinPad').innerHTML = keys.map(k =>
+    `<button class="${k === '' ? 'blank' : ''}" data-k="${k}">${k}</button>`).join('');
+  $('#pinPad').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-k]'); if (!b || b.classList.contains('blank')) return;
+    const k = b.dataset.k;
+    if (k === '⌫') { pinEntry = pinEntry.slice(0, -1); drawPinDots(); return; }
+    if (pinEntry.length >= 4) return;
+    pinEntry += k; drawPinDots();
+    if (pinEntry.length === 4) {
+      const ok = (await shaPin(pinEntry)) === store.settings.pinHash;
+      pinEntry = '';
+      if (ok) unlockOK(); else { drawPinDots(); toast('Wrong PIN — try again'); }
+    }
+  });
+  drawPinDots();
+})();
+
+function lockNow() {
+  if (store.settings.lockMode === 'none' || !store.settings.onboarded) return;
+  $('#lockScreen').hidden = false;
+  const bio = $('#bioBtn');
+  bio.hidden = !store.settings.credId;
+  drawPinDots();
+}
+function unlockOK() {
+  localStorage.setItem('fb.lastUnlockDay', todayISO());
+  sessionStorage.setItem('fb.unlocked', '1');
+  $('#lockScreen').hidden = true;
+  pinEntry = ''; drawPinDots();
+}
+$('#bioBtn').addEventListener('click', async () => {
+  if (await verifyBiometric()) unlockOK(); else toast('Fingerprint not recognized — use PIN');
+});
+function shouldLockOnOpen() {
+  const m = store.settings.lockMode;
+  if (m === 'none' || !store.settings.onboarded) return false;
+  if (m === 'every') return true;
+  if (m === 'daily') return localStorage.getItem('fb.lastUnlockDay') !== todayISO();
+  if (m === 'session') return !sessionStorage.getItem('fb.unlocked');
+  return false;
+}
+
+/* Grace rules per spec: 30 s grace on app-switch (NOT every switch),
+   re-lock after 2 min inactivity. */
+let hiddenAt = null, idleTimer = null;
+function resetIdle() {
+  clearTimeout(idleTimer);
+  if (store.settings.lockMode !== 'none' && store.settings.onboarded)
+    idleTimer = setTimeout(lockNow, 120000);
+}
+['click', 'touchstart', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, resetIdle, { passive: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); }
+  else {
+    if (hiddenAt && Date.now() - hiddenAt > 30000) lockNow();
+    hiddenAt = null; resetIdle();
+  }
+});
+
+/* ----- settings hooks for security ----- */
+async function promptNewPin() {
+  const p1 = prompt('Choose a 4-digit PIN:');
+  if (p1 === null) return false;
+  if (!/^\d{4}$/.test(p1)) { toast('PIN must be exactly 4 digits'); return false; }
+  const p2 = prompt('Confirm your PIN:');
+  if (p2 !== p1) { toast("PINs didn't match"); return false; }
+  const s = store.settings; s.pinHash = await shaPin(p1); store.settings = s;
+  toast('PIN set'); return true;
+}
+$('#lockModeInput').addEventListener('change', async e => {
+  const mode = e.target.value;
+  const s = store.settings;
+  if (mode !== 'none' && !s.pinHash) {
+    if (!(await promptNewPin())) { e.target.value = s.lockMode; return; }
+  }
+  const s2 = store.settings; s2.lockMode = mode; store.settings = s2;
+  toast(mode === 'none' ? 'App lock off' : 'App lock on');
+});
+$('#changePinBtn').addEventListener('click', promptNewPin);
+$('#bioRegBtn').addEventListener('click', async () => {
+  toast(await registerBiometric() ? 'Fingerprint registered ✓' : 'Registration cancelled');
+  renderSettings();
+});
+$('#infoBtn').addEventListener('click', () => openSheet($('#infoSheet')));
+
+/* ================================================================
+   ONBOARDING — welcome → name → security → info → PIN → biometric
+   ================================================================ */
+const ob = { step: 0, owner: 'Voytek', lockMode: 'daily' };
+const OB_STEPS = ['welcome', 'name', 'security', 'info', 'pin', 'bio'];
+
+function obRender() {
+  const body = $('#obBody');
+  const step = OB_STEPS[ob.step];
+  $('#obDots').innerHTML = OB_STEPS.map((_, i) => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('');
+
+  if (step === 'welcome') body.innerHTML = `
+    <h2 class="ob-h">Welcome 👋</h2>
+    <p class="ob-p">One place for your family's receipts and budgets.<br>
+    Snap a receipt, tag it in seconds, and the rest happens automatically.</p>
+    <button class="ob-cta" data-ob="next">Get started</button>`;
+
+  if (step === 'name') body.innerHTML = `
+    <h2 class="ob-h">Whose phone is this?</h2>
+    <p class="ob-p">This sets up your personal view and private folder.</p>
+    <div class="ob-opts">
+      ${['Voytek', 'Andrea'].map(n => `<button class="ob-opt ${ob.owner === n ? 'on' : ''}" data-owner="${n}">${n === 'Voytek' ? '🧑' : '👩'} ${n}</button>`).join('')}
+    </div>
+    <button class="ob-cta" data-ob="next">Continue</button>`;
+
+  if (step === 'security') body.innerHTML = `
+    <h2 class="ob-h">Lock the app?</h2>
+    <div class="ob-opts">
+      ${[['every','Every open','Most private'],['daily','Once per day','Quick daily unlock'],['session','Per session','Until you fully close it'],['none','No lock','Fastest access']]
+        .map(([v, l, s]) => `<button class="ob-opt ${ob.lockMode === v ? 'on' : ''}" data-lockmode="${v}">${l}<small>${s}</small></button>`).join('')}
+    </div>
+    <div class="ob-note">🔐 Uses your Samsung fingerprint — the same security as unlocking your phone. <b>No biometric data is stored by this app.</b></div>
+    <button class="ob-cta" data-ob="next">Continue</button>`;
+
+  if (step === 'info') body.innerHTML = `
+    <h2 class="ob-h">How it works</h2>
+    <div class="ob-note">
+      🏠 <b>Shared</b> receipts are visible to both of you.<br><br>
+      🔒 <b>Personal</b> receipts stay on this phone and go only to your own OneDrive folder — never in joint summaries.<br><br>
+      💼 <b>Work</b> receipts are tracked separately for reimbursement.<br><br>
+      📷 Photos upload to OneDrive; the family PC reads them automatically. Nothing is ever uploaded to the app's website.
+    </div>
+    <button class="ob-cta" data-ob="next">Got it</button>`;
+
+  if (step === 'pin') {
+    if (ob.lockMode === 'none') { obNext(); return; }
+    body.innerHTML = `
+      <h2 class="ob-h">Set your PIN</h2>
+      <p class="ob-p">A 4-digit backup for when fingerprint isn't available.</p>
+      <div class="ob-pin-row"><input type="password" inputmode="numeric" maxlength="4" id="obPin1" placeholder="••••"></div>
+      <div class="ob-pin-row"><input type="password" inputmode="numeric" maxlength="4" id="obPin2" placeholder="confirm"></div>
+      <div class="ob-err" id="obPinErr"></div>
+      <button class="ob-cta" data-ob="pinNext">Set PIN</button>`;
+  }
+
+  if (step === 'bio') {
+    if (ob.lockMode === 'none') { obFinish(); return; }
+    body.innerHTML = `
+      <h2 class="ob-h">Add your fingerprint</h2>
+      <p class="ob-p">Registered once, on this device only.<br>Same Samsung sensor you already trust.</p>
+      <button class="ob-cta" data-ob="bioReg">👆 Register fingerprint</button>
+      <button class="ob-skip" data-ob="finish">Skip — use PIN only</button>`;
+  }
+}
+function obNext() { ob.step = Math.min(ob.step + 1, OB_STEPS.length - 1); obRender(); }
+function obFinish() {
+  const s = store.settings;
+  s.onboarded = true; s.owner = ob.owner; s.lockMode = ob.lockMode;
+  store.settings = s;
+  $('#onboard').hidden = true;
+  unlockOK();                       /* fresh setup counts as unlocked */
+  toast('Welcome, ' + ob.owner + '!');
+  renderAll();
+}
+$('#onboard').addEventListener('click', async e => {
+  const ownerBtn = e.target.closest('[data-owner]');
+  if (ownerBtn) { ob.owner = ownerBtn.dataset.owner; obRender(); return; }
+  const lockBtn = e.target.closest('[data-lockmode]');
+  if (lockBtn) { ob.lockMode = lockBtn.dataset.lockmode; obRender(); return; }
+  const act = e.target.closest('[data-ob]')?.dataset.ob;
+  if (!act) return;
+  if (act === 'next') obNext();
+  if (act === 'finish') obFinish();
+  if (act === 'pinNext') {
+    const p1 = $('#obPin1').value, p2 = $('#obPin2').value;
+    if (!/^\d{4}$/.test(p1)) { $('#obPinErr').textContent = 'PIN must be exactly 4 digits.'; return; }
+    if (p1 !== p2) { $('#obPinErr').textContent = "PINs don't match — try again."; return; }
+    const s = store.settings; s.pinHash = await shaPin(p1); store.settings = s;
+    obNext();
+  }
+  if (act === 'bioReg') {
+    if (await registerBiometric()) { toast('Fingerprint registered ✓'); obFinish(); }
+    else $('#obBody').insertAdjacentHTML('beforeend',
+      '<div class="ob-err">Couldn\'t register — you can try again from Settings.</div>');
+  }
+});
+
+/* ---------------- init ---------------- */
+if (!store.settings.onboarded) {
+  $('#onboard').hidden = false;
+  obRender();
+} else if (shouldLockOnOpen()) {
+  lockNow();
+  /* offer fingerprint immediately if registered */
+  if (store.settings.credId) setTimeout(async () => {
+    if (!$('#lockScreen').hidden && await verifyBiometric()) unlockOK();
+  }, 350);
+}
+resetIdle();
+renderAll();
+
+/* long-press app icon → "Capture receipt" shortcut */
+if (new URLSearchParams(location.search).has('capture')) {
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => openSheet($('#captureSheet')), 250);
+}
+
+/* ---------------- service worker ---------------- */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(e => console.log('SW:', e));
+  /* retire the old Quick Capture app's worker so Chrome treats this
+     as one app again */
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => { if (r.scope.includes('/family-budget/capture')) r.unregister(); });
+  });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
-
-<!-- ONBOARDING SCREEN -->
-<div id="onboarding-screen" class="screen" style="padding:0;background:var(--bg);overflow-y:auto">
-  <div style="flex:1;padding:52px 24px 40px;max-width:480px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:22px;">
-    <div>
-      <div style="font-size:11px;font-weight:700;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">family.budget</div>
-      <div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:10px">Welcome.<br>Before you start.</div>
-      <div style="font-size:14px;color:var(--text2);line-height:1.6">Here's how this app works — takes 30 seconds to read.</div>
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">About this app</div>
-      The app is hosted through GitHub — a private developer account set up under Voytek's profile. While it opens in a browser, <strong style="color:var(--text)">it is not a public website</strong>. No one outside you and Voytek can access it.
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Your folders</div>
-      🏠 <strong style="color:var(--text)">Shared family folder</strong> — household spending, visible to both of you.<br><br>
-      👤 <strong style="color:var(--text)">Your private folder</strong> — your OneDrive only. Voytek cannot see it. Use it to track personal spending independently, with your own dashboard.<br><br>
-      Your private folder is already set up and waiting — Voytek can show you how to enable it when you're ready. I also have my own private folder on mine — so we each track our own spending separately, and our shared spending together.
-    </div>
-    <div style="background:var(--surface);border-radius:var(--radius);padding:18px;font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px">Security</div>
-      Protected by your <strong style="color:var(--text)">Samsung biometric and PIN</strong> — same security as unlocking your phone. Your fingerprint data never leaves your device.<br><br>
-      🔒 The app won't lock just because you switch to another app. It only locks after <strong style="color:var(--text)">2 minutes of inactivity</strong> or when fully closed.
-    </div>
-    <button class="btn-primary" onclick="dismissOnboarding()">Got it — let's set up →</button>
-    <div style="font-size:12px;color:var(--text2);text-align:center">You can access this info anytime via the ℹ️ icon on the home screen.</div>
-  </div>
-</div>
-
-<!-- INFO MODAL -->
-<div id="info-modal" onclick="if(event.target===this)hideInfo()" style="position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:500;display:none;align-items:flex-end;justify-content:center;">
-  <div style="background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:28px 24px 48px;display:flex;flex-direction:column;gap:18px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:18px;font-weight:700">About this app</div>
-      <button onclick="hideInfo()" style="background:var(--surface2);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center">×</button>
-    </div>
-    <div style="font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Hosting</div>
-      Private GitHub account under Voytek's profile. Not a public website — only you and Voytek can access it.
-    </div>
-    <div style="font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Folders</div>
-      🏠 <strong style="color:var(--text)">Shared</strong> — household spending, visible to both.<br>
-      👤 <strong style="color:var(--text)">Your private</strong> — your OneDrive only, Voytek cannot access.<br>
-      🔒 <strong style="color:var(--text)">Voytek's private</strong> — his only, you cannot access.
-    </div>
-    <div style="font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Security</div>
-      Samsung biometric + PIN. Your fingerprint never leaves your device.<br>
-      🔒 Locks after 2 min inactivity or full close — not on app switching.
-    </div>
-    <div style="font-size:14px;color:var(--text2);line-height:1.7">
-      <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Enable your private folder</div>
-      Your folder is already set up.<br>
-      1. Open <strong style="color:var(--text)">OneDrive</strong> on your phone or PC<br>
-      2. Go to <strong style="color:var(--text)">Family-Budget → Andrea-Private</strong><br>
-      3. Ask Voytek — he can walk you through it in 2 minutes.
-    </div>
-    <button class="btn-primary" onclick="hideInfo()">Close</button>
-  </div>
-</div>
-
-<script>
-function showInfo() {
-  const m = document.getElementById('info-modal');
-  m.style.display = 'flex';
-}
-function hideInfo() {
-  document.getElementById('info-modal').style.display = 'none';
-}
-function dismissOnboarding() {
-  state.onboardingDone = true;
-  saveState();
-  showScreen('setup-welcome');
-}
-</script>
-
 </body>
 </html>
