@@ -1279,6 +1279,23 @@ function startQueue(files) {
   setTimeout(() => openCatSheet({ file: queue[0] }), 180);
 }
 
+/* ---------------- learned vendors ----------------
+   Declared BEFORE buildChips below, which runs at page load and
+   calls rebuildVendorList() — this store must exist by then.
+   Every vendor you save is remembered on this phone with its
+   category, appears in the dropdown next time, and is matched
+   by the OCR — so "Superstore" only needs teaching once.     */
+const learnedVendors = {
+  get all()  { return JSON.parse(localStorage.getItem('fb.vendors') || '{}'); },
+  learn(name, cat) {
+    name = (name || '').trim();
+    if (name.length < 3) return;
+    const v = this.all; v[name] = cat;
+    localStorage.setItem('fb.vendors', JSON.stringify(v));
+    rebuildVendorList();
+  },
+};
+
 /* build chips once */
 (function buildChips() {
   $('#allocChips').innerHTML = ALLOCS.map(a =>
@@ -1347,20 +1364,9 @@ function selectCat(id, isAuto) {
 function selectedAlloc() { return document.querySelector('#allocChips .chip.on')?.dataset.alloc || 'Shared'; }
 function selectedCat()   { return document.querySelector('#catChips .cat-chip.on')?.dataset.cat || 'Other'; }
 
-/* ---------------- learned vendors ----------------
-   Every vendor you save is remembered on this phone with its
-   category, appears in the dropdown next time, and is matched
-   by the OCR — so "Superstore" only needs teaching once.     */
-const learnedVendors = {
-  get all()  { return JSON.parse(localStorage.getItem('fb.vendors') || '{}'); },
-  learn(name, cat) {
-    name = (name || '').trim();
-    if (name.length < 3) return;
-    const v = this.all; v[name] = cat;
-    localStorage.setItem('fb.vendors', JSON.stringify(v));
-    rebuildVendorList();
-  },
-};
+/* ---------------- learned vendors: helpers ----------------
+   (the learnedVendors store itself is declared earlier,
+   above buildChips, because buildChips runs at load time) */
 
 function rebuildVendorList() {
   const builtIn = Object.keys(VENDOR_MAP).map(v => v.replace(/\b\w/g, ch => ch.toUpperCase()));
