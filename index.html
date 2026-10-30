@@ -669,13 +669,6 @@
         </div>
         <button class="danger-btn" id="settingsClearSample">Clear</button>
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="s-label">Erase all transactions</div>
-          <div class="s-sub">Cannot be undone</div>
-        </div>
-        <button class="danger-btn" id="settingsClearAll">Erase</button>
-      </div>
     </div>
   </section>
 </main>
@@ -1240,12 +1233,6 @@ function clearSample() {
 }
 $('#clearSampleBtn').addEventListener('click', clearSample);
 $('#settingsClearSample').addEventListener('click', clearSample);
-$('#settingsClearAll').addEventListener('click', () => {
-  if (confirm('Erase every transaction stored on this phone? Receipt photos already in OneDrive are not affected.')) {
-    store.tx = []; toast('All transactions erased'); renderAll();
-  }
-});
-
 /* ---------------- sheets ---------------- */
 const backdrop = $('#backdrop');
 function openSheet(el)  { backdrop.classList.add('open'); el.classList.add('open'); }
