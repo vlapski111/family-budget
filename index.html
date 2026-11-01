@@ -744,7 +744,7 @@
   <div class="field">
     <div class="field-label">Note</div>
     <textarea class="text-input" id="fNote" rows="2" maxlength="200" placeholder="Optional, e.g. birthday gift for Aleks"></textarea>
-    <div class="alloc-hint show">Shown in the Receipts list. Not sent to Excel yet.</div>
+    <div class="alloc-hint show">Shown in the Receipts list. With a photo, about the first 60 characters also go to Excel.</div>
   </div>
 
   <div class="field">
@@ -1598,6 +1598,22 @@ function openCatSheet({ file, editId } = {}) {
 /* ---------------- saving ---------------- */
 function slug(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'receipt'; }
 
+/* Note -> filename token: URL-safe base64 of the first 60 UTF-8 bytes
+   (keeps case, accents, Polish letters; keeps the path under Windows' 260 limit).
+   receipt_ocr.py decodes it into the OCR-Import "Note" column. */
+function noteToken(note) {
+  note = (note || '').trim();
+  if (!note) return '';
+  let bytes = new TextEncoder().encode(note);
+  if (bytes.length > 60) {
+    let n = 60;
+    while (n > 0 && (bytes[n] & 0xC0) === 0x80) n--;      /* don't split a character */
+    bytes = bytes.slice(0, n);
+  }
+  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return '_n-' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function buildFilename(t) {
   /* Established pipeline convention:
      FB_<alloc>_<cat>_<cents>_<timestamp>[_<fund>_<bucket>].jpg
@@ -1609,7 +1625,7 @@ function buildFilename(t) {
     ? 'personal-' + slug(store.settings.owner)
     : slug(t.alloc);
   const cents = Math.round((t.amount || 0) * 100);
-  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}.jpg`;
+  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}${noteToken(t.note)}.jpg`;
 }
 
 async function exportPhoto(file, t) {
