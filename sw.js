@@ -1,4 +1,4 @@
-const CACHE = 'family-budget-v7';
+const CACHE = 'family-budget-v8';
 const BASE = '/family-budget/';
 const ASSETS = [
   BASE,
