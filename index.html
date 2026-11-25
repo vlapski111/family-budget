@@ -278,6 +278,38 @@
   .tx-row[data-remote] { cursor: default; }
   .remote-tag { background: rgba(108, 199, 255, .13); color: #6cc7ff; }
 
+  [hidden] { display: none !important; }
+  .i-btn {
+    display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px;
+    border-radius: 50%; border: 1px solid var(--faint); color: var(--muted);
+    font-size: 11px; font-weight: 700; vertical-align: 1px;
+  }
+  .s-help {
+    font-size: 12.5px; color: var(--muted); line-height: 1.55; background: var(--surface-2);
+    border-radius: 12px; padding: 10px 12px; margin: 2px 0 10px;
+  }
+  .s-help b { color: var(--text); }
+  .s-fld { display: flex; gap: 8px; align-items: center; }
+  .settings-row .s-fld input.s-input { width: 118px; }
+  .s-adv { margin: 2px 0 8px; font-size: 12.5px; color: var(--muted); }
+  .s-adv summary { padding: 6px 0; cursor: pointer; }
+  .s-adv input {
+    width: 100%; margin-top: 6px; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 10px; color: var(--text); font-size: 13px;
+  }
+  .pk-crumb { font-size: 12px; color: var(--muted); margin: 0 0 8px; word-break: break-all; }
+  .pk-list { max-height: 42vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+  .pk-item {
+    display: flex; gap: 10px; align-items: center; width: 100%; text-align: left;
+    padding: 13px 14px; border-bottom: 1px solid var(--line); font-size: 14.5px;
+  }
+  .pk-item:last-child { border-bottom: none; }
+  .pk-item:active { background: var(--line); }
+  .pk-item.up { color: var(--muted); font-size: 13px; }
+  .pk-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .gd-status { font-size: 13px; color: var(--green); margin: -8px 0 16px; }
+  .gd-status.off { color: var(--amber); }
+
   /* ---------- Tab bar + FAB ---------- */
   .tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
@@ -356,6 +388,8 @@
     border-radius: 12px; padding: 12px 13px; color: var(--text);
   }
   .text-input:focus { outline: none; border-color: var(--green); }
+  textarea.text-input { resize: none; font: inherit; line-height: 1.4; }
+  .tx-note { font-size: 11.5px; color: var(--faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .chip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .chip {
@@ -719,31 +753,36 @@
       </div>
       <div class="settings-row">
         <div>
-          <div class="s-label">Shared folder link</div>
-          <div class="s-sub">OneDrive link (can edit) to the family Shared folder</div>
+          <div class="s-label">Shared folder <button class="i-btn" data-help="hlpShared" aria-label="Help">i</button></div>
+          <div class="s-sub" id="odSharedName">Not chosen yet</div>
         </div>
-        <input class="s-input" type="url" id="odShareLink" placeholder="Paste link" autocomplete="off">
+        <button class="mini-btn" data-pick="root">Choose</button>
       </div>
+      <div class="s-help" id="hlpShared" hidden>Point this to the OneDrive folder named <b>Shared</b>. <b>Voytek:</b> tap Choose, then My OneDrive, then Shared. <b>Andrea:</b> tap Choose, then Shared with me, then Shared. Finish with <b>Use this folder</b>.</div>
+      <details class="s-adv">
+        <summary>Or paste a sharing link instead</summary>
+        <input type="url" id="odShareLink" placeholder="Paste link" autocomplete="off">
+      </details>
       <div class="settings-row">
         <div>
           <div class="s-label">Shared receipts folder</div>
           <div class="s-sub">Inside the shared folder</div>
         </div>
-        <input class="s-input" type="text" id="odFolderShared" autocomplete="off">
+        <div class="s-fld"><input class="s-input" type="text" id="odFolderShared" autocomplete="off"><button class="mini-btn" data-pick="shared">Choose</button></div>
       </div>
       <div class="settings-row">
         <div>
           <div class="s-label">Personal receipts folder</div>
           <div class="s-sub">In your own OneDrive</div>
         </div>
-        <input class="s-input" type="text" id="odFolderPersonal" autocomplete="off">
+        <div class="s-fld"><input class="s-input" type="text" id="odFolderPersonal" autocomplete="off"><button class="mini-btn" data-pick="personal">Choose</button></div>
       </div>
       <div class="settings-row">
         <div>
           <div class="s-label">Work receipts folder</div>
           <div class="s-sub">In your own OneDrive</div>
         </div>
-        <input class="s-input" type="text" id="odFolderWork" autocomplete="off">
+        <div class="s-fld"><input class="s-input" type="text" id="odFolderWork" autocomplete="off"><button class="mini-btn" data-pick="work">Choose</button></div>
       </div>
       <div class="settings-row">
         <div>
@@ -753,7 +792,7 @@
         <button class="mini-btn" id="odSyncBtn">Sync</button>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="sampleCard" hidden>
       <div class="settings-row">
         <div>
           <div class="s-label">Clear sample data</div>
@@ -761,12 +800,22 @@
         </div>
         <button class="danger-btn" id="settingsClearSample">Clear</button>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Guides</h2></div>
       <div class="settings-row">
         <div>
-          <div class="s-label">Erase all transactions</div>
-          <div class="s-sub">Cannot be undone</div>
+          <div class="s-label">Getting started</div>
+          <div class="s-sub">How the app works</div>
         </div>
-        <button class="danger-btn" id="settingsClearAll">Erase</button>
+        <button class="mini-btn" data-guide="start">Show</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">OneDrive setup</div>
+          <div class="s-sub">Sign in and choose your folders</div>
+        </div>
+        <button class="mini-btn" data-guide="onedrive">Show</button>
       </div>
     </div>
   </section>
@@ -848,6 +897,12 @@
   </div>
 
   <div class="field">
+    <div class="field-label">Note</div>
+    <textarea class="text-input" id="fNote" rows="2" maxlength="200" placeholder="Optional, e.g. birthday gift for Aleks"></textarea>
+    <div class="alloc-hint show">Shown in the Receipts list. With a photo, about the first 60 characters also go to Excel.</div>
+  </div>
+
+  <div class="field">
     <div class="field-label">Allocation</div>
     <div class="chip-row" id="allocChips"></div>
     <div class="alloc-hint" id="allocHint"></div>
@@ -896,6 +951,38 @@
     <div class="ob-brand">FAMILY.BUDGET</div>
     <div id="obBody"></div>
     <div class="ob-dots" id="obDots"></div>
+  </div>
+</div>
+
+<!-- ============ ONEDRIVE FOLDER PICKER ============ -->
+<div class="sheet" id="odPickSheet" role="dialog" aria-label="Choose OneDrive folder">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-titles">
+      <div class="sheet-title" id="pkTitle">Choose folder</div>
+      <div class="sheet-sub" id="pkSub"></div>
+    </div>
+    <button class="sheet-close" data-close>✕</button>
+  </div>
+  <div class="seg" id="pkTabs" hidden>
+    <button class="on" data-pk-tab="mine">My OneDrive</button>
+    <button data-pk-tab="shared">Shared with me</button>
+  </div>
+  <div class="pk-crumb" id="pkCrumb"></div>
+  <div class="pk-list" id="pkList"></div>
+  <div class="sheet-actions">
+    <button class="btn-primary" id="pkUse">Use this folder</button>
+    <button class="btn-ghost" id="pkNew">+ New folder here</button>
+  </div>
+</div>
+
+<!-- ============ GUIDES (start + OneDrive) ============ -->
+<div class="overlay" id="guide" hidden>
+  <div class="ob-inner">
+    <div class="ob-brand" id="gdBrand">FAMILY.BUDGET</div>
+    <div id="gdBody"></div>
+    <div class="ob-dots" id="gdDots"></div>
+    <button class="ob-skip" id="gdClose" style="margin-top:10px">Close</button>
   </div>
 </div>
 
@@ -1083,6 +1170,7 @@ const $ = (s) => document.querySelector(s);
 const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
 const fmt = (n) => CAD.format(n);
 const fmt0 = (n) => CAD.format(n).replace(/\.\d\d$/, '');
+const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const catOf = (id) => CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -1289,6 +1377,7 @@ function txRowHTML(t) {
       <div class="tx-body">
         <div class="tx-vendor">${t.vendor || (t.category === CASH_CAT ? 'Cash' : 'Receipt')}${t.work ? '<span class="work-badge">💼 WORK</span>' : ''}${isRet ? '<span class="ret-badge">↩ RETURN</span>' : ''}</div>
         <div class="tx-meta">${t.category}<span class="alloc-tag">${t.alloc}</span>${t.remote ? `<span class="alloc-tag remote-tag">📲 ${t.by || 'Other phone'}</span>` : ''}</div>
+        ${t.note ? `<div class="tx-note">${esc(t.note)}</div>` : ''}
       </div>
       <div class="tx-right">
         <div class="tx-amt${isRet ? ' ret' : ''}">${fmt(t.amount)}</div>
@@ -1311,6 +1400,7 @@ function renderReceipts() {
     scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal');
   if (q) tx = tx.filter(t =>
     (t.vendor || '').toLowerCase().includes(q) ||
+    (t.note || '').toLowerCase().includes(q) ||
     t.category.toLowerCase().includes(q) ||
     t.alloc.toLowerCase().includes(q) ||
     (t.fund || '').toLowerCase().includes(q) ||
@@ -1485,12 +1575,17 @@ function renderOdSettings() {
   $('#odFolderShared').value = s.folderShared || '';
   $('#odFolderPersonal').value = s.folderPersonal || '';
   $('#odFolderWork').value = s.folderWork || '';
+  $('#odSharedName').textContent = s.sharedPick && s.sharedPick.name ? '📁 ' + s.sharedPick.name
+    : s.shareLink ? 'Using the pasted link' : 'Not chosen yet';
+  $('#sampleCard').hidden = !store.tx.some(t => t.sample);
 }
 [['#odShareLink', 'shareLink'], ['#odFolderShared', 'folderShared'],
  ['#odFolderPersonal', 'folderPersonal'], ['#odFolderWork', 'folderWork']].forEach(([sel, key]) =>
   $(sel).addEventListener('change', e => {
-    const s = store.settings; s[key] = e.target.value.trim(); store.settings = s;
-    if (key === 'shareLink') localStorage.removeItem('fb.sharedRoot');
+    const s = store.settings; s[key] = e.target.value.trim();
+    if (key === 'shareLink') { localStorage.removeItem('fb.sharedRoot'); if (s.shareLink) s.sharedPick = null; }
+    store.settings = s;
+    if (key === 'shareLink') renderOdSettings();
     odErr = ''; odRenderStatus(); odSchedule();
   }));
 $('#odSyncBtn').addEventListener('click', () => { odSyncNow(); toast('Syncing…'); });
@@ -1504,12 +1599,6 @@ function clearSample() {
 }
 $('#clearSampleBtn').addEventListener('click', clearSample);
 $('#settingsClearSample').addEventListener('click', clearSample);
-$('#settingsClearAll').addEventListener('click', () => {
-  if (confirm('Erase every transaction stored on this phone? Receipt photos already in OneDrive are not affected.')) {
-    store.tx = []; toast('All transactions erased'); renderAll();
-  }
-});
-
 /* ---------------- sheets ---------------- */
 const backdrop = $('#backdrop');
 function openSheet(el)  { backdrop.classList.add('open'); el.classList.add('open'); }
@@ -1857,6 +1946,7 @@ function openCatSheet({ file, editId, cash } = {}) {
     $('#fVendor').value = t.vendor || '';
     $('#fAmount').value = Math.abs(t.amount);
     $('#fDate').value = t.date;
+    $('#fNote').value = t.note || '';
     selectAlloc(t.alloc); selectCat(t.category, false);
     selectFund(t.fund || 'Joint', false); setWork(!!t.work);
     setReturn(t.amount < 0);
@@ -1878,6 +1968,7 @@ function openCatSheet({ file, editId, cash } = {}) {
     $('#fVendor').value = '';
     $('#fAmount').value = '';
     $('#fDate').value = todayISO();
+    $('#fNote').value = '';
     selectAlloc(cashMode ? 'Shared' : (s.defaultAlloc === 'last' ? s.lastAlloc : s.defaultAlloc));
     setWork(false);
     setReturn(false);
@@ -1894,6 +1985,22 @@ function openCatSheet({ file, editId, cash } = {}) {
 /* ---------------- saving ---------------- */
 function slug(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'receipt'; }
 
+/* Note -> filename token: URL-safe base64 of the first 60 UTF-8 bytes
+   (keeps case, accents, Polish letters; keeps the path under Windows' 260 limit).
+   receipt_ocr.py decodes it into the OCR-Import "Note" column. */
+function noteToken(note) {
+  note = (note || '').trim();
+  if (!note) return '';
+  let bytes = new TextEncoder().encode(note);
+  if (bytes.length > 60) {
+    let n = 60;
+    while (n > 0 && (bytes[n] & 0xC0) === 0x80) n--;      /* don't split a character */
+    bytes = bytes.slice(0, n);
+  }
+  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return '_n-' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function buildFilename(t) {
   /* Established pipeline convention:
      FB_<alloc>_<cat>_<cents>_<timestamp>[_<fund>_<bucket>].jpg
@@ -1906,7 +2013,7 @@ function buildFilename(t) {
     ? 'personal-' + slug(store.settings.owner)
     : slug(t.alloc);
   const cents = Math.round((t.amount || 0) * 100);
-  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}.jpg`;
+  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}${noteToken(t.note)}.jpg`;
 }
 
 async function exportPhoto(file, t) {
@@ -1956,6 +2063,7 @@ async function saveCurrent(addAnother) {
     alloc: selectedAlloc(),
     fund: selectedFund(),
     work: isWork(),
+    note: $('#fNote').value.trim().slice(0, 200),
   };
 
   const all = store.tx;
@@ -2099,6 +2207,7 @@ function unlockOK() {
   sessionStorage.setItem('fb.unlocked', '1');
   $('#lockScreen').hidden = true;
   pinEntry = ''; drawPinDots();
+  if (typeof maybeAutoGuide === 'function') setTimeout(maybeAutoGuide, 400);
 }
 $('#bioBtn').addEventListener('click', async () => {
   if (await verifyBiometric()) unlockOK(); else toast('Fingerprint not recognized — use PIN');
@@ -2226,6 +2335,7 @@ function obFinish() {
   s.onboarded = true; s.owner = ob.owner; s.lockMode = ob.lockMode;
   store.settings = s;
   $('#onboard').hidden = true;
+  localStorage.setItem('fb.guide.autostart', '1');     /* new user: show the tour once */
   unlockOK();                       /* fresh setup counts as unlocked */
   toast('Welcome, ' + ob.owner + '!');
   renderAll();
@@ -2395,6 +2505,8 @@ const odPutJSON = (path, obj) =>
 
 /* Resolve the pasted Shared-folder link into a drive + folder id (cached) */
 async function sharedRoot() {
+  const pick = store.settings.sharedPick;
+  if (pick && pick.driveId && pick.itemId) return { link: '', driveId: pick.driveId, itemId: pick.itemId };
   const link = (store.settings.shareLink || '').trim();
   if (!link) return null;
   const cached = JSON.parse(localStorage.getItem('fb.sharedRoot') || 'null');
@@ -2503,7 +2615,7 @@ async function odSyncTx(force) {
     if (!/link|Paste/.test(odErr)) odErr = '';
   } catch (e) {
     if (e.message !== 'auth') odErr = e.where === 'share'
-      ? 'The Shared folder link did not work, check it in Settings.'
+      ? 'The Shared folder could not be opened. Choose it again in Settings.'
       : 'Sync problem (' + (e.status || e.message) + ')';
   } finally {
     odSyncing = false; odRenderStatus(); renderAll();
@@ -2536,12 +2648,212 @@ if (!store.settings.onboarded) {
 }
 resetIdle();
 renderAll();
+setTimeout(maybeAutoGuide, 600);
 
 /* long-press app icon → "Capture receipt" shortcut */
 if (new URLSearchParams(location.search).has('capture')) {
   history.replaceState(null, '', location.pathname);
   setTimeout(() => openSheet($('#captureSheet')), 250);
 }
+
+
+/* ================================================================
+   OneDrive folder picker (Microsoft Graph) + help toggles
+   ================================================================ */
+const pk = { kind: null, mode: null, tab: 'mine', stack: [], items: [] };
+
+document.addEventListener('click', e => {
+  const h = e.target.closest('.i-btn');
+  if (h) { const el = document.getElementById(h.dataset.help); if (el) el.hidden = !el.hidden; }
+  const p = e.target.closest('[data-pick]');
+  if (p) openPicker(p.dataset.pick);
+});
+
+const pkChildrenURL = (e) => e.id === 'root' ? '/me/drive/root/children' : `/drives/${e.driveId}/items/${e.id}/children`;
+
+async function pkBase() {
+  if (pk.mode === 'sub') { const r = await sharedRoot(); return { driveId: r.driveId, id: r.itemId, name: 'Shared' }; }
+  if (pk.mode === 'own' || (pk.mode === 'root' && pk.tab === 'mine')) return { id: 'root', name: 'OneDrive' };
+  return null;                                   /* root mode, Shared with me tab: the list of shared folders */
+}
+async function pkLoad() {
+  const list = $('#pkList');
+  list.innerHTML = '<div class="pk-empty">Loading…</div>';
+  try {
+    const base = await pkBase();
+    const top = pk.stack.length ? pk.stack[pk.stack.length - 1] : base;
+    let rows;
+    if (!top) {
+      const j = await (await g('/me/drive/sharedWithMe?$top=100')).json();
+      rows = (j.value || []).map(x => ({ x, r: x.remoteItem || x })).filter(o => o.r.folder)
+        .map(o => ({ name: o.x.name || o.r.name, id: o.r.id, driveId: o.r.parentReference && o.r.parentReference.driveId }))
+        .filter(r => r.id && r.driveId);
+    } else {
+      const j = await (await g(pkChildrenURL(top) + '?$top=200&$select=id,name,folder,parentReference')).json();
+      rows = (j.value || []).filter(x => x.folder)
+        .map(x => ({ name: x.name, id: x.id, driveId: (x.parentReference && x.parentReference.driveId) || top.driveId }));
+    }
+    rows.sort((a, b) => a.name.localeCompare(b.name));
+    pk.items = rows;
+    const up = pk.stack.length ? '<button class="pk-item up" data-up="1">⬆ Back</button>' : '';
+    list.innerHTML = up + (rows.length
+      ? rows.map((r, i) => `<button class="pk-item" data-i="${i}">📁 <span>${esc(r.name)}</span></button>`).join('')
+      : '<div class="pk-empty">No folders here.' + (top ? ' You can use this folder, or add a new one below.' : ' Ask for the Shared folder to be shared with you first.') + '</div>');
+  } catch (e) {
+    list.innerHTML = '<div class="pk-empty">Could not load folders. ' +
+      (e.message === 'auth' ? 'Sign in to OneDrive first.' : 'Check your connection and try again.') + '</div>';
+  }
+  const crumbBase = pk.mode === 'sub' ? 'Shared' : (pk.mode === 'root' && pk.tab === 'shared') ? 'Shared with me' : 'My OneDrive';
+  $('#pkCrumb').textContent = [crumbBase, ...pk.stack.map(n => n.name)].join(' / ');
+  /* the root of your whole OneDrive (or the list of shares) is never a valid choice */
+  $('#pkUse').disabled = pk.mode !== 'sub' && pk.stack.length === 0;
+  $('#pkUse').style.opacity = $('#pkUse').disabled ? .4 : 1;
+  $('#pkNew').hidden = pk.mode === 'root' && pk.tab === 'shared' && pk.stack.length === 0;
+}
+async function openPicker(kind) {
+  if (odStatus !== 'ok') { toast(odStatus === 'expired' ? 'Reconnect OneDrive first' : 'Sign in to OneDrive first'); return; }
+  if (kind === 'shared') {
+    let r = null; try { r = await sharedRoot(); } catch (e) { /* handled below */ }
+    if (!r) { toast('Choose the Shared folder first'); return; }
+  }
+  pk.kind = kind; pk.mode = kind === 'root' ? 'root' : kind === 'shared' ? 'sub' : 'own';
+  pk.tab = 'mine'; pk.stack = [];
+  $('#pkTabs').hidden = pk.mode !== 'root';
+  document.querySelectorAll('#pkTabs button').forEach(b => b.classList.toggle('on', b.dataset.pkTab === 'mine'));
+  const T = {
+    root: ['Choose the Shared folder', s => s.owner === 'Voytek' ? 'Open My OneDrive and pick Shared' : 'Open Shared with me and pick Shared'],
+    shared: ['Shared receipts folder', () => 'A folder inside the Shared folder'],
+    personal: ['Personal receipts folder', () => 'In your own OneDrive'],
+    work: ['Work receipts folder', () => 'In your own OneDrive'],
+  }[kind];
+  $('#pkTitle').textContent = T[0];
+  $('#pkSub').textContent = T[1](store.settings);
+  openSheet($('#odPickSheet'));
+  pkLoad();
+}
+$('#pkList').addEventListener('click', e => {
+  if (e.target.closest('[data-up]')) { pk.stack.pop(); pkLoad(); return; }
+  const b = e.target.closest('[data-i]'); if (!b) return;
+  const r = pk.items[+b.dataset.i]; if (!r) return;
+  pk.stack.push(r); pkLoad();
+});
+$('#pkTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-pk-tab]'); if (!b) return;
+  pk.tab = b.dataset.pkTab; pk.stack = [];
+  document.querySelectorAll('#pkTabs button').forEach(x => x.classList.toggle('on', x === b));
+  pkLoad();
+});
+$('#pkUse').addEventListener('click', () => {
+  const s = store.settings, names = pk.stack.map(n => n.name);
+  if (pk.mode === 'root') {
+    const top = pk.stack[pk.stack.length - 1]; if (!top) return;
+    s.sharedPick = { driveId: top.driveId, itemId: top.id, name: top.name };
+    s.shareLink = '';
+    localStorage.removeItem('fb.sharedRoot');
+  } else if (pk.mode === 'sub') {
+    s.folderShared = names.join('/');
+  } else {
+    s[pk.kind === 'work' ? 'folderWork' : 'folderPersonal'] = names.join('/');
+  }
+  store.settings = s;
+  renderOdSettings(); closeSheets();
+  odErr = ''; odRenderStatus(); odSchedule();
+  toast(pk.mode === 'root' ? 'Shared folder set' : 'Folder set');
+});
+$('#pkNew').addEventListener('click', async () => {
+  const name = (prompt('New folder name:') || '').trim();
+  if (!name) return;
+  try {
+    const base = await pkBase();
+    const top = pk.stack.length ? pk.stack[pk.stack.length - 1] : base;
+    if (!top) return;
+    await g(pkChildrenURL(top), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, folder: {}, '@microsoft.graph.conflictBehavior': 'fail' }) });
+    pkLoad();
+  } catch (e) { toast(e.status === 409 ? 'That folder already exists' : 'Could not create the folder'); }
+});
+
+/* ================================================================
+   GUIDES — "Getting started" and "OneDrive setup".
+   Auto-open once; reopen any time from the bottom of Settings.
+   ================================================================ */
+const GUIDES = {
+  start: { brand: 'GETTING STARTED', steps: [
+    { h: 'Welcome 👋', p: 'Snap a receipt, tag it in seconds and see where the money goes. This short tour covers the basics.' },
+    { h: 'Add a receipt', p: 'Tap the green <b>+</b>. Take a photo, pick one from your gallery or enter it by hand. Fill in vendor, amount and category, add a note if you like, then save.' },
+    { h: 'Shared, Personal, Work', p: '<b>🤝 Shared</b> receipts are visible to both of you. <b>🔒 Personal</b> stays in your own view and your own OneDrive. <b>💼 Work</b> is tracked separately and never counts against the household budget.' },
+    { h: 'Cash and returns', p: 'Use <b>💵 Cash withdrawal</b> when you take out cash. It counts as spent on the day you withdraw it. For a refund tap <b>Return</b> (or type a minus sign) and it is saved as a negative amount.' },
+    { h: 'Read your dashboard', p: 'The ring shows this month against budget. Tap any category to compare it with last month and with your typical month. Use the arrows at the top to look at other months.' },
+    { h: 'Seeing each other', p: 'Once OneDrive is connected, each of you sees the other\'s <b>shared</b> spending on your own phone, marked 📲. Personal and Work receipts are never shared. The <b>OneDrive setup</b> guide in Settings walks you through it.' },
+  ] },
+  onedrive: { brand: 'ONEDRIVE SETUP', steps: [
+    { h: 'Connect OneDrive ☁️', p: 'OneDrive carries your receipt photos to the family PC and lets you and Andrea see each other\'s shared spending. You set it up once on each phone.' },
+    { h: 'Sign in', p: 'Tap the button and sign in with your Microsoft account. Accept the permissions screen. Microsoft asks you to reconnect about once a day: when the banner appears, just tap <b>Connect</b>.', act: 'signin', actLabel: 'Sign in now', status: true },
+    { h: 'Choose the Shared folder', pf: () => store.settings.owner === 'Voytek'
+        ? 'In Settings tap <b>Choose</b> next to <b>Shared folder</b>, open <b>My OneDrive</b>, pick <b>Shared</b>, then tap <b>Use this folder</b>. Make sure the folder is shared with Andrea (can edit).'
+        : 'In Settings tap <b>Choose</b> next to <b>Shared folder</b>, open <b>Shared with me</b>, pick <b>Shared</b>, then tap <b>Use this folder</b>.',
+      act: 'pickShared', actLabel: 'Choose it now' },
+    { h: 'Choose receipt folders', p: 'Still in Settings, tap <b>Choose</b> next to the Shared, Personal and Work receipt folders. They must match the folders the family PC already reads, so pick the ones you use today.', act: 'pickFolders', actLabel: 'Go to Settings' },
+    { h: 'All set ✅', p: 'Add a receipt with a photo to test it. The photo uploads straight to OneDrive. You can reopen this guide any time from the bottom of Settings.' },
+  ] },
+};
+const gd = { key: null, step: 0 };
+
+function gdRender() {
+  const G = GUIDES[gd.key], st = G.steps[gd.step], last = gd.step === G.steps.length - 1;
+  $('#gdBrand').textContent = G.brand;
+  $('#gdDots').innerHTML = G.steps.map((_, i) => `<i class="${i <= gd.step ? 'on' : ''}"></i>`).join('');
+  const status = st.status
+    ? `<div class="gd-status ${odStatus === 'ok' ? '' : 'off'}">${odStatus === 'ok' ? '✓ Connected' : 'Not connected yet'}</div>` : '';
+  $('#gdBody').innerHTML = `
+    <h2 class="ob-h">${st.h}</h2>
+    <p class="ob-p">${st.pf ? st.pf() : st.p}</p>
+    ${status}
+    ${st.act ? `<button class="ob-opt" style="width:100%;margin-bottom:12px;text-align:center" data-gd-act="${st.act}">${st.actLabel}</button>` : ''}
+    <button class="ob-cta" data-gd="${last ? 'done' : 'next'}">${last ? 'Done' : 'Next'}</button>
+    ${gd.step > 0 ? '<button class="ob-skip" data-gd="back">Back</button>' : ''}`;
+}
+function openGuide(key, step) {
+  gd.key = key; gd.step = step || 0;
+  closeSheets(); gdRender(); $('#guide').hidden = false;
+}
+function closeGuide() {
+  if (!gd.key) return;
+  localStorage.setItem('fb.guide.' + gd.key, '1');
+  $('#guide').hidden = true;
+  gd.key = null;
+  setTimeout(maybeAutoGuide, 250);                   /* new users: start guide → OneDrive guide */
+}
+function maybeAutoGuide() {
+  if (!store.settings.onboarded || !$('#guide').hidden || !$('#onboard').hidden || !$('#lockScreen').hidden) return;
+  const resume = localStorage.getItem('fb.guide.resume');
+  if (resume) {
+    localStorage.removeItem('fb.guide.resume');
+    const [k, n] = resume.split(':'); if (GUIDES[k]) { openGuide(k, +n || 0); return; }
+  }
+  if (localStorage.getItem('fb.guide.autostart')) { localStorage.removeItem('fb.guide.autostart'); openGuide('start'); return; }
+  if (!localStorage.getItem('fb.guide.onedrive')) openGuide('onedrive');
+}
+$('#guide').addEventListener('click', e => {
+  const act = e.target.closest('[data-gd-act]')?.dataset.gdAct;
+  if (act === 'signin') {
+    localStorage.setItem('fb.guide.resume', 'onedrive:2');   /* come back to the next step after Microsoft */
+    odSignIn(); return;
+  }
+  if (act === 'pickShared') { closeGuide(); goTo('settings'); setTimeout(() => openPicker('root'), 300); return; }
+  if (act === 'pickFolders') {
+    closeGuide(); goTo('settings');
+    setTimeout(() => $('#odCard').scrollIntoView({ behavior: 'smooth' }), 200); return;
+  }
+  const d = e.target.closest('[data-gd]')?.dataset.gd;
+  if (d === 'next') { gd.step++; gdRender(); }
+  if (d === 'back') { gd.step = Math.max(0, gd.step - 1); gdRender(); }
+  if (d === 'done') closeGuide();
+});
+$('#gdClose').addEventListener('click', closeGuide);
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-guide]'); if (b) openGuide(b.dataset.guide);
+});
 
 /* ---------------- service worker ---------------- */
 if ('serviceWorker' in navigator) {
