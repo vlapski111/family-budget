@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.30.0/lib/msal-browser.min.js" defer></script>
 <style>
   :root {
     --bg: #0a0a14;
@@ -165,6 +166,8 @@
 
   /* ---------- Category bars ---------- */
   .cat-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+  .cat-row[data-cat] { cursor: pointer; }
+  .cat-row[data-cat]:active { opacity: .7; }
   .cat-icon {
     width: 38px; height: 38px; border-radius: 12px; flex: none;
     display: grid; place-items: center; font-size: 17px;
@@ -190,11 +193,17 @@
   .tx-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
   .tx-right { text-align: right; }
   .tx-amt { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tx-amt.ret { color: var(--green); }
   .tx-date { font-size: 11.5px; color: var(--faint); margin-top: 1px; }
   .alloc-tag {
     display: inline-block; font-size: 10.5px; font-weight: 600;
     padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px;
     background: var(--surface-2); color: var(--muted);
+  }
+  .ret-badge {
+    display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+    color: var(--green); background: var(--green-soft);
+    border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
   }
   .empty {
     text-align: center; color: var(--muted); font-size: 13.5px;
@@ -224,6 +233,26 @@
   }
   .seg button.on { background: var(--surface-2); color: var(--text); }
 
+  /* ---------- Category detail sheet ---------- */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .detail-stat {
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 13px;
+  }
+  .detail-stat.wide { grid-column: 1 / -1; }
+  .detail-stat .d-label { font-size: 11px; color: var(--muted); }
+  .detail-stat .d-val {
+    font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; margin-top: 2px;
+  }
+  .detail-stat .d-sub { font-size: 12px; margin-top: 3px; color: var(--muted); }
+  .d-up { color: var(--amber); font-weight: 600; }
+  .d-down { color: var(--green); font-weight: 600; }
+  .detail-list-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: 4px 0 4px;
+  }
+
   /* ---------- Settings ---------- */
   .settings-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -242,6 +271,12 @@
     border-radius: 10px; padding: 8px 10px; color: var(--text);
   }
   .danger-btn { color: var(--red); font-weight: 600; font-size: 14px; }
+  .settings-row input.s-input {
+    width: 168px; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; color: var(--text); font-size: 13px;
+  }
+  .tx-row[data-remote] { cursor: default; }
+  .remote-tag { background: rgba(108, 199, 255, .13); color: #6cc7ff; }
 
   /* ---------- Tab bar + FAB ---------- */
   .tabbar {
@@ -321,8 +356,6 @@
     border-radius: 12px; padding: 12px 13px; color: var(--text);
   }
   .text-input:focus { outline: none; border-color: var(--green); }
-  textarea.text-input { resize: none; font: inherit; line-height: 1.4; }
-  .tx-note { font-size: 11.5px; color: var(--faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .chip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .chip {
@@ -348,6 +381,9 @@
   }
   .work-toggle.on {
     background: rgba(255, 184, 77, .12); border-color: var(--amber); color: var(--amber);
+  }
+  .work-toggle.ret-toggle.on {
+    background: var(--green-soft); border-color: var(--green); color: var(--green);
   }
   #workHint { display: none; margin-top: 8px; }
   .work-toggle.on + #workHint { display: block; }
@@ -523,6 +559,11 @@
       <button id="clearSampleBtn">Clear it</button>
     </div>
 
+    <div class="banner" id="odBanner" hidden>
+      <span id="odBannerText">Connect OneDrive</span>
+      <button id="odBannerBtn">Connect</button>
+    </div>
+
     <div class="card ring-card">
       <div class="ring-wrap">
         <svg viewBox="0 0 210 210" aria-hidden="true">
@@ -579,7 +620,10 @@
       <div class="card-head"><h2>6-month trend</h2></div>
       <div class="trend" id="trendBars"></div>
     </div>
-    <div class="card" id="chartList"></div>
+    <div class="card">
+      <div class="card-head"><h2>By category</h2><span style="font-size:11.5px;color:var(--faint)">Tap one for details</span></div>
+      <div id="chartList"></div>
+    </div>
     <div class="card" id="chartAllocCard">
       <div class="card-head"><h2>Who paid — joint spending</h2></div>
       <div id="chartAllocList"></div>
@@ -645,6 +689,7 @@
           <div class="s-sub">Share sends the photo to the OneDrive app</div>
         </div>
         <select id="saveMethod">
+          <option value="onedrive">OneDrive direct</option>
           <option value="share">Share sheet</option>
           <option value="download">Download</option>
         </select>
@@ -663,6 +708,51 @@
         </select>
       </div>
     </div>
+    <div class="card" id="odCard">
+      <div class="card-head"><h2>☁️ OneDrive sync</h2></div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label" id="odStatusLabel">Starting…</div>
+          <div class="s-sub" id="odStatusSub"></div>
+        </div>
+        <button class="mini-btn" id="odSignBtn">Sign in</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Shared folder link</div>
+          <div class="s-sub">OneDrive link (can edit) to the family Shared folder</div>
+        </div>
+        <input class="s-input" type="url" id="odShareLink" placeholder="Paste link" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Shared receipts folder</div>
+          <div class="s-sub">Inside the shared folder</div>
+        </div>
+        <input class="s-input" type="text" id="odFolderShared" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Personal receipts folder</div>
+          <div class="s-sub">In your own OneDrive</div>
+        </div>
+        <input class="s-input" type="text" id="odFolderPersonal" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Work receipts folder</div>
+          <div class="s-sub">In your own OneDrive</div>
+        </div>
+        <input class="s-input" type="text" id="odFolderWork" autocomplete="off">
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Sync now</div>
+          <div class="s-sub" id="odLastSub">Not synced yet</div>
+        </div>
+        <button class="mini-btn" id="odSyncBtn">Sync</button>
+      </div>
+    </div>
     <div class="card">
       <div class="settings-row">
         <div>
@@ -670,6 +760,13 @@
           <div class="s-sub">Removes preview transactions only</div>
         </div>
         <button class="danger-btn" id="settingsClearSample">Clear</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="s-label">Erase all transactions</div>
+          <div class="s-sub">Cannot be undone</div>
+        </div>
+        <button class="danger-btn" id="settingsClearAll">Erase</button>
       </div>
     </div>
   </section>
@@ -709,6 +806,10 @@
       <span class="cb-icon">✏️</span>
       <span><span class="cb-title">Enter manually</span><br><span class="cb-sub">No photo — just the details</span></span>
     </button>
+    <button class="capture-big" id="btnCash">
+      <span class="cb-icon">💵</span>
+      <span><span class="cb-title">Cash withdrawal</span><br><span class="cb-sub">Cash taken out, e.g. for kids' gifts</span></span>
+    </button>
   </div>
 </div>
 
@@ -726,25 +827,24 @@
 
   <div class="field field-grid-2">
     <div>
-      <div class="field-label">Vendor</div>
+      <div class="field-label" id="vendorLabel">Vendor</div>
       <input class="text-input" id="fVendor" list="vendorList" placeholder="e.g. Metro" autocomplete="off">
       <datalist id="vendorList"></datalist>
     </div>
     <div>
       <div class="field-label">Amount</div>
-      <input class="text-input" id="fAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      <input class="text-input" id="fAmount" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
     </div>
+  </div>
+
+  <div class="field">
+    <button class="work-toggle ret-toggle" id="returnToggle">↩️ Return / refund — money back</button>
+    <div class="alloc-hint" id="returnHint">Saved as a negative amount, so it reduces this category's total.</div>
   </div>
 
   <div class="field">
     <div class="field-label">Date</div>
     <input class="text-input" id="fDate" type="date">
-  </div>
-
-  <div class="field">
-    <div class="field-label">Note</div>
-    <textarea class="text-input" id="fNote" rows="2" maxlength="200" placeholder="Optional, e.g. birthday gift for Aleks"></textarea>
-    <div class="alloc-hint show">Shown in the Receipts list. With a photo, about the first 60 characters also go to Excel.</div>
   </div>
 
   <div class="field">
@@ -773,6 +873,19 @@
     <button class="btn-ghost" id="saveAddBtn">Save &amp; add another</button>
     <button class="btn-delete" id="deleteBtn" hidden>Delete this receipt</button>
   </div>
+</div>
+
+<!-- ============ CATEGORY DETAIL SHEET ============ -->
+<div class="sheet" id="detailSheet" role="dialog" aria-label="Category detail">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-titles">
+      <div class="sheet-title" id="detailTitle">Category</div>
+      <div class="sheet-sub" id="detailSub"></div>
+    </div>
+    <button class="sheet-close" data-close>✕</button>
+  </div>
+  <div id="detailBody"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -836,6 +949,8 @@
    FB_YYYYMMDD-HHMMSS_<alloc>_<category>_<vendor>_<amount>.jpg
    ================================================================ */
 
+const CASH_CAT = 'Cash Withdrawal';
+
 const CATEGORIES = [
   /* Everyday */
   { id: 'Groceries',            group: 'Everyday',      emoji: '🛒', color: '#7be0a8' },
@@ -872,6 +987,8 @@ const CATEGORIES = [
   { id: 'Gifts – Family',       group: 'Fun & Gifts',   emoji: '🎁', color: '#ff9ecd' },
   { id: 'Gifts – Friends (Adult)', group: 'Fun & Gifts', emoji: '🎁', color: '#f7a9c4' },
   { id: 'Gifts – Friends (Kids)', group: 'Fun & Gifts', emoji: '🎁', color: '#fbc4ab' },
+  /* Cash */
+  { id: CASH_CAT,              group: 'Cash',          emoji: '💵', color: '#8bd17c' },
   /* Fallback */
   { id: 'Other',                group: 'Other',         emoji: '📦', color: '#94a3b8' },
 ];
@@ -917,11 +1034,24 @@ const VENDOR_MAP = {
   'air canada': 'Travel', 'westjet': 'Travel', 'marriott': 'Travel', 'expedia': 'Travel',
 };
 
+/* ---------------- OneDrive sync: constants + state ----------------
+   Declared up here because the storage setter below calls odSchedule()
+   (even during first-run seeding, before the sync module is defined). */
+const MS_CLIENT_ID = '1f272cba-33f5-426a-a341-e4ce48190e9a';
+const MS_REDIRECT  = 'https://vlapski111.github.io/family-budget/';
+const MS_AUTHORITY = 'https://login.microsoftonline.com/consumers';
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+const MS_SCOPES = ['User.Read', 'Files.ReadWrite.All'];
+let odMsal = null, odStatus = 'off', odSyncing = false, odFlushing = false, odFlushAgain = false;
+let odErr = '', odPending = 0, odDebounce = null;
+let odLast = localStorage.getItem('fb.odLast') || '';
+
 /* ---------------- storage ---------------- */
 const store = {
   get tx()      { return JSON.parse(localStorage.getItem('fb.tx') || '[]'); },
-  set tx(v)     { localStorage.setItem('fb.tx', JSON.stringify(v)); },
-  get settings(){ return Object.assign({ budget: 4000, pbudget: 800, owner: 'Voytek', saveMethod: 'share', defaultAlloc: 'last', lastAlloc: 'Shared', onboarded: false, lockMode: 'none', pinHash: null, credId: null }, JSON.parse(localStorage.getItem('fb.settings') || '{}')); },
+  set tx(v)     { localStorage.setItem('fb.tx', JSON.stringify(v)); odSchedule(); },
+  get settings(){ return Object.assign({ budget: 4000, pbudget: 800, owner: 'Voytek', saveMethod: 'onedrive', defaultAlloc: 'last', lastAlloc: 'Shared', onboarded: false, lockMode: 'none', pinHash: null, credId: null,
+    shareLink: '', folderShared: 'Inbox', folderPersonal: 'Family-Budget/Personal-Inbox', folderWork: 'Family-Budget/Work-Inbox' }, JSON.parse(localStorage.getItem('fb.settings') || '{}')); },
   set settings(v){ localStorage.setItem('fb.settings', JSON.stringify(v)); },
 };
 
@@ -953,23 +1083,32 @@ const $ = (s) => document.querySelector(s);
 const CAD = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' });
 const fmt = (n) => CAD.format(n);
 const fmt0 = (n) => CAD.format(n).replace(/\.\d\d$/, '');
-const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const catOf = (id) => CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 let viewMonth = todayISO().slice(0, 7);            // 'YYYY-MM'
 const isCurrentMonth = () => viewMonth === todayISO().slice(0, 7);
-const monthTx = () => store.tx.filter(t => t.date.startsWith(viewMonth))
+/* Entries the OTHER person's phone shared with us (read-only, never edited here) */
+const remoteTx = () => {
+  const mine = new Set(store.tx.map(t => t.id));
+  return JSON.parse(localStorage.getItem('fb.remote') || '[]')
+    .filter(t => !mine.has(t.id)).map(t => ({ ...t, remote: true }));
+};
+const allTx = () => store.tx.concat(remoteTx());
+const monthTx = () => allTx().filter(t => t.date.startsWith(viewMonth))
                               .sort((a, b) => b.date.localeCompare(a.date));
 
 function monthLabel(ym) {
   const [y, m] = ym.split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
 }
-function shiftMonth(delta) {
-  const [y, m] = viewMonth.split('-').map(Number);
+function ymShift(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
-  viewMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function shiftMonth(delta) {
+  viewMonth = ymShift(viewMonth, delta);
   renderAll();
 }
 function niceDate(iso) {
@@ -1019,8 +1158,10 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-scope]');
   if (b) setScope(b.dataset.scope);
 });
-const scopedTx = () => monthTx().filter(t => !t.work &&
-  (scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal'));
+const inScope = (t) => !t.work &&
+  (scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal');
+const scopedTx = () => monthTx().filter(inScope);
+const allScoped = () => allTx().filter(inScope);
 const scopeBudget = () => scope === 'shared'
   ? (store.settings.budget || 0)
   : (store.settings.pbudget || 0);
@@ -1037,7 +1178,7 @@ function renderHome() {
   $('#sampleBanner').hidden = !store.tx.some(t => t.sample);
 
   /* ring */
-  const pct = budget > 0 ? Math.min(spent / budget, 1) : 0;
+  const pct = budget > 0 ? Math.min(Math.max(spent / budget, 0), 1) : 0;
   const fill = $('#ringFill');
   fill.setAttribute('stroke-dasharray', RING_C);
   fill.setAttribute('stroke-dashoffset', RING_C * (1 - pct));
@@ -1100,10 +1241,11 @@ function catBarsData(tx, mode) {
     const k = mode === 'category' ? t.category : mode === 'fund' ? (t.fund || 'Joint') : t.alloc;
     totals[k] = (totals[k] || 0) + t.amount;
   });
-  const sum = tx.reduce((s, t) => s + t.amount, 0) || 1;
+  /* percentages are of positive spending only, so returns never push a bar negative */
+  const sum = Object.values(totals).reduce((s, v) => s + Math.max(v, 0), 0) || 1;
   return Object.entries(totals)
     .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({ key: k, amt: v, pct: v / sum }));
+    .map(([k, v]) => ({ key: k, amt: v, pct: Math.max(v, 0) / sum }));
 }
 
 function renderCatBars(el, tx, mode, limit) {
@@ -1122,8 +1264,9 @@ function renderCatBars(el, tx, mode, limit) {
     const [emoji, color] = mode === 'category'
       ? [catOf(r.key).emoji, catOf(r.key).color]
       : (WHO_STYLE[r.key] || ['👤','#94a3b8']);
+    const tap = mode === 'category' ? ` data-cat="${r.key}" role="button" tabindex="0"` : '';
     return `
-      <div class="cat-row">
+      <div class="cat-row"${tap}>
         <div class="cat-icon">${emoji}</div>
         <div class="cat-body">
           <div class="cat-top">
@@ -1139,23 +1282,26 @@ function renderCatBars(el, tx, mode, limit) {
 /* ---------------- rendering: receipts ---------------- */
 function txRowHTML(t) {
   const c = catOf(t.category);
+  const isRet = t.amount < 0;
   return `
-    <button class="tx-row" data-id="${t.id}">
+    <button class="tx-row" data-id="${t.id}"${t.remote ? ' data-remote="1"' : ''}>
       <div class="cat-icon">${c.emoji}</div>
       <div class="tx-body">
-        <div class="tx-vendor">${t.vendor || 'Receipt'}${t.work ? '<span class="work-badge">💼 WORK</span>' : ''}</div>
-        <div class="tx-meta">${t.category}<span class="alloc-tag">${t.alloc}</span></div>
-        ${t.note ? `<div class="tx-note">${esc(t.note)}</div>` : ''}
+        <div class="tx-vendor">${t.vendor || (t.category === CASH_CAT ? 'Cash' : 'Receipt')}${t.work ? '<span class="work-badge">💼 WORK</span>' : ''}${isRet ? '<span class="ret-badge">↩ RETURN</span>' : ''}</div>
+        <div class="tx-meta">${t.category}<span class="alloc-tag">${t.alloc}</span>${t.remote ? `<span class="alloc-tag remote-tag">📲 ${t.by || 'Other phone'}</span>` : ''}</div>
       </div>
       <div class="tx-right">
-        <div class="tx-amt">${fmt(t.amount)}</div>
+        <div class="tx-amt${isRet ? ' ret' : ''}">${fmt(t.amount)}</div>
         <div class="tx-date">${niceDate(t.date)}</div>
       </div>
     </button>`;
 }
 function bindTxRows(scope) {
   scope.querySelectorAll('.tx-row').forEach(r =>
-    r.addEventListener('click', () => openCatSheet({ editId: r.dataset.id })));
+    r.addEventListener('click', () => {
+      if (r.dataset.remote) { toast('Entered on the other phone, edit it there'); return; }
+      openCatSheet({ editId: r.dataset.id });
+    }));
 }
 function renderReceipts() {
   renderScopeSeg($('#receiptsSeg'));
@@ -1165,11 +1311,11 @@ function renderReceipts() {
     scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal');
   if (q) tx = tx.filter(t =>
     (t.vendor || '').toLowerCase().includes(q) ||
-    (t.note || '').toLowerCase().includes(q) ||
     t.category.toLowerCase().includes(q) ||
     t.alloc.toLowerCase().includes(q) ||
     (t.fund || '').toLowerCase().includes(q) ||
-    (q === 'work' && t.work));
+    (q === 'work' && t.work) ||
+    ((q === 'return' || q === 'refund') && t.amount < 0));
   $('#receiptsList').innerHTML = tx.length
     ? tx.map(txRowHTML).join('')
     : `<div class="empty"><div class="big">🔍</div>No receipts${q ? ' matching “' + q + '”' : ''} in ${monthLabel(viewMonth)}.</div>`;
@@ -1193,24 +1339,117 @@ function renderCharts() {
 
 /* 6-month spending trend ending at the viewed month */
 function renderTrend() {
-  const [y, m] = viewMonth.split('-').map(Number);
   const months = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(y, m - 1 - i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-  const sums = months.map(ym => store.tx
-    .filter(t => t.date.startsWith(ym) && !t.work &&
-      (scope === 'shared' ? t.alloc !== 'Personal' : t.alloc === 'Personal'))
+  for (let i = 5; i >= 0; i--) months.push(ymShift(viewMonth, -i));
+  const sums = months.map(ym => allTx()
+    .filter(t => t.date.startsWith(ym) && inScope(t))
     .reduce((s, t) => s + t.amount, 0));
   const max = Math.max(...sums, 1);
   $('#trendBars').innerHTML = months.map((ym, i) => `
     <div class="tcol${ym === viewMonth ? ' now' : ''}">
       <div class="tamt">${sums[i] ? fmt0(sums[i]) : ''}</div>
-      <div class="tbar"><i style="height:${Math.max((sums[i] / max) * 100, sums[i] ? 3 : 0)}%"></i></div>
+      <div class="tbar"><i style="height:${Math.max((Math.max(sums[i], 0) / max) * 100, sums[i] > 0 ? 3 : 0)}%"></i></div>
       <div class="tlab">${monthLabel(ym).split(' ')[0]}</div>
     </div>`).join('');
 }
+
+/* ---------------- category detail (tap a category) ----------------
+   Month to date, vs last month at the same point in the month,
+   last month in full, and vs the MEDIAN of up to 6 prior months
+   (median so one big month doesn't distort "typical").           */
+function median(arr) {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b), m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function deltaHTML(cur, base) {
+  if (base == null) return '';
+  if (Math.abs(base) < 0.005) return cur > 0.005 ? '<span class="d-up">new this month</span>' : '';
+  const pct = ((cur - base) / Math.abs(base)) * 100;
+  if (Math.abs(pct) < 1) return '<span class="d-sub">about the same</span>';
+  return pct > 0
+    ? `<span class="d-up">▲ ${Math.round(pct)}% higher</span>`
+    : `<span class="d-down">▼ ${Math.round(-pct)}% lower</span>`;
+}
+function openCatDetail(cat) {
+  const c = catOf(cat);
+  const mine = allScoped().filter(t => t.category === cat);
+  const sumMonth = (ym, maxDay) => mine
+    .filter(t => t.date.startsWith(ym) && (!maxDay || Number(t.date.slice(8, 10)) <= maxDay))
+    .reduce((s, t) => s + t.amount, 0);
+
+  const cur = sumMonth(viewMonth, 0);
+  const prevYM = ymShift(viewMonth, -1);
+  const dayLim = isCurrentMonth() ? new Date().getDate() : 0;
+  const prevSame = sumMonth(prevYM, dayLim);
+  const prevFull = sumMonth(prevYM, 0);
+
+  /* median over up to 6 prior months, starting no earlier than the first
+     month with any data in this view (so empty pre-history doesn't drag it) */
+  const firstYM = allScoped().map(t => t.date.slice(0, 7)).sort()[0];
+  const hist = [];
+  for (let i = 1; i <= 6; i++) {
+    const ym = ymShift(viewMonth, -i);
+    if (firstYM && ym >= firstYM) hist.push(sumMonth(ym, 0));
+  }
+  const med = hist.length >= 2 ? median(hist) : null;
+
+  const nowLabel = isCurrentMonth() ? 'Month to date' : monthLabel(viewMonth);
+  const medSub = med == null
+    ? '<div class="d-sub">Needs 2+ months of history</div>'
+    : isCurrentMonth()
+      ? `<div class="d-sub">${med > 0 ? Math.round((cur / med) * 100) + '% of a typical month used so far' : 'No typical spend yet'}</div>`
+      : `<div class="d-sub">${deltaHTML(cur, med)}</div>`;
+
+  const list = mine.filter(t => t.date.startsWith(viewMonth))
+                   .sort((a, b) => b.date.localeCompare(a.date));
+
+  $('#detailTitle').textContent = c.emoji + ' ' + cat;
+  $('#detailSub').textContent = (scope === 'shared' ? 'Shared' : 'Personal') + ' · ' + monthLabel(viewMonth);
+  $('#detailBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-stat wide">
+        <div class="d-label">${nowLabel}</div>
+        <div class="d-val">${fmt(cur)}</div>
+        <div class="d-sub">${list.length} receipt${list.length === 1 ? '' : 's'}</div>
+      </div>
+      <div class="detail-stat">
+        <div class="d-label">${isCurrentMonth() ? 'Last month, same days' : 'Previous month'}</div>
+        <div class="d-val">${fmt(prevSame)}</div>
+        <div class="d-sub">${deltaHTML(cur, prevSame)}</div>
+      </div>
+      <div class="detail-stat">
+        <div class="d-label">Last month, full</div>
+        <div class="d-val">${fmt(prevFull)}</div>
+        <div class="d-sub">${monthLabel(prevYM)}</div>
+      </div>
+      <div class="detail-stat wide">
+        <div class="d-label">Typical month (median of last ${hist.length || 6})</div>
+        <div class="d-val">${med == null ? '—' : fmt(med)}</div>
+        ${medSub}
+      </div>
+    </div>
+    <div class="detail-list-title">This month</div>
+    <div id="detailTx">${list.length ? list.map(txRowHTML).join('') : '<div class="empty">No receipts in this category this month.</div>'}</div>`;
+
+  /* tapping a receipt here jumps to its edit sheet */
+  $('#detailTx').querySelectorAll('.tx-row').forEach(r =>
+    r.addEventListener('click', () => {
+      if (r.dataset.remote) { toast('Entered on the other phone, edit it there'); return; }
+      closeSheets();
+      setTimeout(() => openCatSheet({ editId: r.dataset.id }), 180);
+    }));
+  openSheet($('#detailSheet'));
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('.cat-row[data-cat]');
+  if (r) openCatDetail(r.dataset.cat);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const r = e.target.closest && e.target.closest('.cat-row[data-cat]');
+  if (r) openCatDetail(r.dataset.cat);
+});
 
 /* ---------------- settings ---------------- */
 function renderSettings() {
@@ -1223,6 +1462,8 @@ function renderSettings() {
   $('#lockModeInput').value = s.lockMode;
   $('#bioRegBtn').textContent = s.credId ? 'Re-register' : 'Register';
   $('#changePinBtn').textContent = s.pinHash ? 'Change' : 'Set PIN';
+  renderOdSettings();
+  odRenderStatus();
 }
 $('#ownerInput').addEventListener('change', e => {
   const s = store.settings; s.owner = e.target.value; store.settings = s;
@@ -1237,6 +1478,25 @@ $('#pbudgetInput').addEventListener('change', e => {
 $('#saveMethod').addEventListener('change', e => { const s = store.settings; s.saveMethod = e.target.value; store.settings = s; });
 $('#defaultAlloc').addEventListener('change', e => { const s = store.settings; s.defaultAlloc = e.target.value; store.settings = s; });
 
+/* OneDrive settings fields */
+function renderOdSettings() {
+  const s = store.settings;
+  $('#odShareLink').value = s.shareLink || '';
+  $('#odFolderShared').value = s.folderShared || '';
+  $('#odFolderPersonal').value = s.folderPersonal || '';
+  $('#odFolderWork').value = s.folderWork || '';
+}
+[['#odShareLink', 'shareLink'], ['#odFolderShared', 'folderShared'],
+ ['#odFolderPersonal', 'folderPersonal'], ['#odFolderWork', 'folderWork']].forEach(([sel, key]) =>
+  $(sel).addEventListener('change', e => {
+    const s = store.settings; s[key] = e.target.value.trim(); store.settings = s;
+    if (key === 'shareLink') localStorage.removeItem('fb.sharedRoot');
+    odErr = ''; odRenderStatus(); odSchedule();
+  }));
+$('#odSyncBtn').addEventListener('click', () => { odSyncNow(); toast('Syncing…'); });
+$('#odSignBtn').addEventListener('click', () => odStatus === 'ok' ? odSignOut() : odSignIn());
+$('#odBannerBtn').addEventListener('click', () => odSignIn());
+
 function clearSample() {
   store.tx = store.tx.filter(t => !t.sample);
   toast('Sample data cleared');
@@ -1244,6 +1504,12 @@ function clearSample() {
 }
 $('#clearSampleBtn').addEventListener('click', clearSample);
 $('#settingsClearSample').addEventListener('click', clearSample);
+$('#settingsClearAll').addEventListener('click', () => {
+  if (confirm('Erase every transaction stored on this phone? Receipt photos already in OneDrive are not affected.')) {
+    store.tx = []; toast('All transactions erased'); renderAll();
+  }
+});
+
 /* ---------------- sheets ---------------- */
 const backdrop = $('#backdrop');
 function openSheet(el)  { backdrop.classList.add('open'); el.classList.add('open'); }
@@ -1259,12 +1525,14 @@ $('#fabBtn').addEventListener('click', () => openSheet($('#captureSheet')));
 $('#btnCamera').addEventListener('click', () => $('#fileCamera').click());
 $('#btnGallery').addEventListener('click', () => $('#fileGallery').click());
 $('#btnManual').addEventListener('click', () => { closeSheets(); setTimeout(() => openCatSheet({}), 180); });
+$('#btnCash').addEventListener('click', () => { closeSheets(); setTimeout(() => openCatSheet({ cash: true }), 180); });
 
 let queue = [];          // File objects waiting to be categorized
 let qIndex = 0;
 let editing = null;      // transaction id when editing
 let currentFile = null;  // File for the receipt on screen
 let currentThumbURL = null;
+let cashMode = false;    // true while the sheet is recording a cash withdrawal
 
 $('#fileCamera').addEventListener('change', e => startQueue([...e.target.files]));
 $('#fileGallery').addEventListener('change', e => startQueue([...e.target.files]));
@@ -1324,11 +1592,20 @@ const learnedVendors = {
   });
   $('#workToggle').addEventListener('click', () =>
     setWork(!$('#workToggle').classList.contains('on')));
+  $('#returnToggle').addEventListener('click', () => setReturn(!isReturn()));
   $('#catChips').addEventListener('click', e => {
     const b = e.target.closest('.cat-chip'); if (!b) return;
     selectCat(b.dataset.cat, false);
   });
   $('#fVendor').addEventListener('input', autoCategorize);
+  /* typing a minus sign flips the sheet into Return mode */
+  $('#fAmount').addEventListener('input', () => {
+    const v = $('#fAmount').value;
+    if (v.startsWith('-')) {
+      setReturn(true);
+      $('#fAmount').value = v.replace('-', '');
+    }
+  });
 })();
 
 function selectFund(f, isAuto) {
@@ -1338,6 +1615,11 @@ function selectFund(f, isAuto) {
 function selectedFund() { return document.querySelector('#fundChips .chip.on')?.dataset.fund || 'Joint'; }
 function setWork(on) { $('#workToggle').classList.toggle('on', on); }
 function isWork() { return $('#workToggle').classList.contains('on'); }
+function setReturn(on) {
+  $('#returnToggle').classList.toggle('on', on);
+  $('#returnHint').classList.toggle('show', on);
+}
+function isReturn() { return $('#returnToggle').classList.contains('on'); }
 
 function selectAlloc(a) {
   document.querySelectorAll('#allocChips .chip').forEach(c => c.classList.toggle('on', c.dataset.alloc === a));
@@ -1412,6 +1694,7 @@ function matchKnownVendor(fullTextLower, headerLines) {
 }
 
 function autoCategorize() {
+  if (cashMode) return;                  /* purpose text must not change the category */
   const v = $('#fVendor').value.trim().toLowerCase();
   if (!v) return;
   /* learned vendors first — the human taught us these */
@@ -1500,6 +1783,9 @@ function parseReceiptText(raw) {
     if (all.length) out.amount = Math.max(...all);
   }
 
+  /* refund receipts: flag so the sheet can pre-select Return */
+  out.looksLikeReturn = /(refund|return(ed)?\s+(item|merch)|credit\s+voucher|void)/i.test(text);
+
   /* date: ISO, slashed, or "Jan 5 2026" styles; ignore implausible */
   const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
   const dmy = text.match(/\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b/);
@@ -1536,6 +1822,7 @@ async function runPhoneOcr(file) {
     }
     if (r.amount != null && !$('#fAmount').value) { $('#fAmount').value = r.amount.toFixed(2); got++; }
     if (r.date) { $('#fDate').value = r.date; got++; }
+    if (r.looksLikeReturn) setReturn(true);
     sub.textContent = got
       ? '✓ Auto-read from photo — confirm & save (PC re-verifies later)'
       : "Couldn't read this one — enter details manually";
@@ -1545,7 +1832,7 @@ async function runPhoneOcr(file) {
   }
 }
 
-function openCatSheet({ file, editId } = {}) {
+function openCatSheet({ file, editId, cash } = {}) {
   ocrRun++;                         /* cancel any in-flight OCR fill */
   editing = editId || null;
   currentFile = file || null;
@@ -1562,33 +1849,42 @@ function openCatSheet({ file, editId } = {}) {
   if (editing) {
     const t = store.tx.find(x => x.id === editing);
     if (!t) return;
-    $('#sheetTitle').textContent = 'Edit receipt';
-    $('#sheetSub').textContent = (t.vendor || 'Receipt') + ' · ' + niceDate(t.date);
+    cashMode = t.category === CASH_CAT;
+    $('#sheetTitle').textContent = cashMode ? 'Edit cash withdrawal' : 'Edit receipt';
+    $('#sheetSub').textContent = (t.vendor || (cashMode ? 'Cash' : 'Receipt')) + ' · ' + niceDate(t.date);
+    $('#vendorLabel').textContent = cashMode ? 'Purpose' : 'Vendor';
+    $('#fVendor').placeholder = cashMode ? 'e.g. Kids gifts' : 'e.g. Metro';
     $('#fVendor').value = t.vendor || '';
-    $('#fAmount').value = t.amount;
+    $('#fAmount').value = Math.abs(t.amount);
     $('#fDate').value = t.date;
-    $('#fNote').value = t.note || '';
     selectAlloc(t.alloc); selectCat(t.category, false);
     selectFund(t.fund || 'Joint', false); setWork(!!t.work);
+    setReturn(t.amount < 0);
     $('#saveBtn').textContent = 'Save changes';
     $('#saveAddBtn').hidden = true;
     $('#deleteBtn').hidden = false;
   } else {
+    cashMode = !!cash;
     const n = queue.length > 1 ? ` · ${qIndex + 1} of ${queue.length}` : '';
-    $('#sheetTitle').textContent = (file ? 'Categorize receipt' : 'New receipt') + n;
-    $('#sheetSub').textContent = file
-      ? 'Photo goes to your OneDrive inbox when you save'
-      : 'Recorded on this phone only — no photo';
+    $('#sheetTitle').textContent = cashMode ? 'Cash withdrawal'
+      : (file ? 'Categorize receipt' : 'New receipt') + n;
+    $('#sheetSub').textContent = cashMode
+      ? 'Counted as spent today, so it shows in your totals'
+      : file
+        ? 'Photo goes to your OneDrive inbox when you save'
+        : 'Recorded on this phone only — no photo';
+    $('#vendorLabel').textContent = cashMode ? 'Purpose' : 'Vendor';
+    $('#fVendor').placeholder = cashMode ? 'e.g. Kids gifts' : 'e.g. Metro';
     $('#fVendor').value = '';
     $('#fAmount').value = '';
     $('#fDate').value = todayISO();
-    $('#fNote').value = '';
-    selectAlloc(s.defaultAlloc === 'last' ? s.lastAlloc : s.defaultAlloc);
+    selectAlloc(cashMode ? 'Shared' : (s.defaultAlloc === 'last' ? s.lastAlloc : s.defaultAlloc));
     setWork(false);
-    selectCat('Groceries', false);
+    setReturn(false);
+    selectCat(cashMode ? CASH_CAT : 'Groceries', false);
     $('#autoTag').classList.remove('show');
-    $('#saveBtn').textContent = 'Save receipt';
-    $('#saveAddBtn').hidden = false;
+    $('#saveBtn').textContent = cashMode ? 'Save withdrawal' : 'Save receipt';
+    $('#saveAddBtn').hidden = cashMode ? true : false;
     $('#deleteBtn').hidden = true;
     if (file) runPhoneOcr(file);
   }
@@ -1598,40 +1894,34 @@ function openCatSheet({ file, editId } = {}) {
 /* ---------------- saving ---------------- */
 function slug(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'receipt'; }
 
-/* Note -> filename token: URL-safe base64 of the first 60 UTF-8 bytes
-   (keeps case, accents, Polish letters; keeps the path under Windows' 260 limit).
-   receipt_ocr.py decodes it into the OCR-Import "Note" column. */
-function noteToken(note) {
-  note = (note || '').trim();
-  if (!note) return '';
-  let bytes = new TextEncoder().encode(note);
-  if (bytes.length > 60) {
-    let n = 60;
-    while (n > 0 && (bytes[n] & 0xC0) === 0x80) n--;      /* don't split a character */
-    bytes = bytes.slice(0, n);
-  }
-  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
-  return '_n-' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 function buildFilename(t) {
   /* Established pipeline convention:
      FB_<alloc>_<cat>_<cents>_<timestamp>[_<fund>_<bucket>].jpg
      receipt_ocr.py splits on "_" — first five tokens unchanged,
-     fund + bucket appended for the workbook router. */
+     fund + bucket appended for the workbook router.
+     Returns carry NEGATIVE cents (e.g. -1299). */
   const stamp = t.date.replace(/-/g, '') + '-' +
     new Date().toTimeString().slice(0, 8).replace(/:/g, '');
   const alloc = t.alloc === 'Personal'
     ? 'personal-' + slug(store.settings.owner)
     : slug(t.alloc);
   const cents = Math.round((t.amount || 0) * 100);
-  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}${noteToken(t.note)}.jpg`;
+  return `FB_${alloc}_${slug(t.category)}_${cents}_${stamp}_${slug(t.fund || 'joint')}_${t.work ? 'work' : 'home'}.jpg`;
 }
 
 async function exportPhoto(file, t) {
   const name = buildFilename(t);
   const renamed = new File([file], name, { type: file.type || 'image/jpeg' });
   const s = store.settings;
+
+  /* OneDrive direct: queue the photo; it uploads now if signed in, otherwise
+     as soon as the person reconnects. No folder picking, no share sheet. */
+  if (s.saveMethod === 'onedrive') {
+    try {
+      await odQueuePhoto(renamed, t);
+      return odSignedIn() ? 'queued' : 'pending';
+    } catch (err) { /* fall through to share / download */ }
+  }
 
   if (s.saveMethod === 'share' && navigator.canShare && navigator.canShare({ files: [renamed] })) {
     try {
@@ -1651,16 +1941,21 @@ async function exportPhoto(file, t) {
 }
 
 async function saveCurrent(addAnother) {
+  /* amount is entered as a positive number; the Return toggle (or a typed
+     minus sign) stores it negative so it reduces totals */
+  let amt = Number($('#fAmount').value) || 0;
+  amt = isReturn() ? -Math.abs(amt) : Math.abs(amt);
+  const wasCash = cashMode;
+
   const t = {
     id: editing || ('t' + Date.now() + Math.random().toString(36).slice(2, 6)),
     date: $('#fDate').value || todayISO(),
     vendor: $('#fVendor').value.trim(),
-    amount: Math.max(0, Number($('#fAmount').value) || 0),
+    amount: amt,
     category: selectedCat(),
     alloc: selectedAlloc(),
     fund: selectedFund(),
     work: isWork(),
-    note: $('#fNote').value.trim().slice(0, 200),
   };
 
   const all = store.tx;
@@ -1674,12 +1969,15 @@ async function saveCurrent(addAnother) {
 
   const s = store.settings; s.lastAlloc = t.alloc; store.settings = s;
 
-  /* remember this vendor + category for dropdown, auto-category, and OCR */
-  learnedVendors.learn(t.vendor, t.category);
+  /* remember this vendor + category for dropdown, auto-category, and OCR
+     (never for cash purposes) */
+  if (t.category !== CASH_CAT) learnedVendors.learn(t.vendor, t.category);
 
-  let note = editing ? 'Receipt updated' : 'Receipt saved';
+  let note = editing ? 'Receipt updated' : (wasCash ? 'Cash withdrawal saved' : (t.amount < 0 ? 'Return saved' : 'Receipt saved'));
   if (currentFile && !editing) {
     const how = await exportPhoto(currentFile, t);
+    if (how === 'queued')     note = 'Saved — uploading photo to OneDrive';
+    if (how === 'pending')    note = 'Saved — photo uploads once OneDrive is reconnected';
     if (how === 'shared')     note = 'Saved — photo sent to OneDrive';
     if (how === 'downloaded') note = 'Saved — photo in Downloads';
     if (how === 'cancelled')  note = 'Saved here — photo not exported';
@@ -1698,7 +1996,7 @@ async function saveCurrent(addAnother) {
     queue = []; qIndex = 0;
     closeSheets();
   }
-  editing = null; currentFile = null;
+  editing = null; currentFile = null; cashMode = false;
   renderAll();
 }
 $('#saveBtn').addEventListener('click', () => saveCurrent(false));
@@ -1717,6 +2015,7 @@ function renderAll() {
   $('#monthLabel').textContent = monthLabel(viewMonth);
   $('#monthNext').disabled = isCurrentMonth();
   $('#monthNext').style.opacity = isCurrentMonth() ? .3 : 1;
+  odRenderBanner();
   if (currentView === 'home') renderHome();
   if (currentView === 'receipts') renderReceipts();
   if (currentView === 'charts') renderCharts();
@@ -1953,6 +2252,276 @@ $('#onboard').addEventListener('click', async e => {
       '<div class="ob-err">Couldn\'t register — you can try again from Settings.</div>');
   }
 });
+
+/* ================================================================
+   ONEDRIVE SYNC — Microsoft sign-in (MSAL) + Graph API
+   - receipt photos upload straight to the right OneDrive folder
+   - shared entries are mirrored through the Shared folder so each
+     phone sees the other's spending (each phone writes ONLY its own
+     file, so there are never write conflicts)
+   - a private full backup goes to your own OneDrive
+   Microsoft limits web-app sign-ins to ~24 h, so expect a quick
+   reconnect tap about once a day. Anything entered meanwhile is held
+   on the phone and uploaded afterwards.
+   ================================================================ */
+const enc = (p) => p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+const joinPath = (...a) => a.filter(Boolean).join('/').replace(/\/+/g, '/');
+const odSignedIn = () => !!(odMsal && odMsal.getActiveAccount() && odStatus === 'ok');
+function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return s.length + ':' + h; }
+
+/* --- queue of photos waiting to upload (IndexedDB, survives app close) --- */
+const odDB = {
+  _db: null,
+  open() {
+    return this._db ? Promise.resolve(this._db) : new Promise((res, rej) => {
+      const r = indexedDB.open('fb-upload', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('q', { keyPath: 'id' });
+      r.onsuccess = () => { this._db = r.result; res(r.result); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async run(mode, fn) {
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const t = db.transaction('q', mode);
+      const req = fn(t.objectStore('q'));
+      t.oncomplete = () => res(req && req.result);
+      t.onerror = () => rej(t.error);
+    });
+  },
+  put(o) { return this.run('readwrite', s => s.put(o)); },
+  all()  { return this.run('readonly', s => s.getAll()); },
+  del(id){ return this.run('readwrite', s => s.delete(id)); },
+};
+function odCountPending() {
+  odDB.all().then(a => { odPending = (a || []).length; odRenderStatus(); }).catch(() => {});
+}
+
+/* --- status UI --- */
+function odRenderStatus() {
+  const lab = $('#odStatusLabel'); if (!lab) return;
+  const acct = odMsal && odMsal.getActiveAccount();
+  const txt = { off: 'Starting…', unavailable: 'Sign-in unavailable (offline?)', signedout: 'Not connected',
+                expired: 'Sign-in expired', ok: 'Connected' }[odStatus] || odStatus;
+  lab.textContent = '☁️ ' + txt + (odStatus === 'ok' && acct ? ' · ' + acct.username : '');
+  $('#odStatusSub').textContent = (odPending ? odPending + ' photo' + (odPending === 1 ? '' : 's') + ' waiting to upload. ' : '') + odErr;
+  $('#odSignBtn').textContent = odStatus === 'ok' ? 'Sign out' : odStatus === 'expired' ? 'Reconnect' : 'Sign in';
+  $('#odLastSub').textContent = odLast
+    ? 'Last sync ' + new Date(odLast).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'Not synced yet';
+  odRenderBanner();
+}
+function odRenderBanner() {
+  const b = $('#odBanner'); if (!b) return;
+  const show = store.settings.onboarded && (odStatus === 'signedout' || odStatus === 'expired');
+  b.hidden = !show;
+  if (show) $('#odBannerText').textContent = odStatus === 'expired'
+    ? 'OneDrive sign-in expired. Tap to reconnect.'
+    : 'Connect OneDrive to upload receipts and see each other\'s spending.';
+}
+function odSetStatus(s) { odStatus = s; odRenderStatus(); }
+
+/* --- sign-in --- */
+async function odInit() {
+  if (!window.msal) { odSetStatus('unavailable'); return; }
+  try {
+    odMsal = new msal.PublicClientApplication({
+      auth: { clientId: MS_CLIENT_ID, authority: MS_AUTHORITY, redirectUri: MS_REDIRECT, navigateToLoginRequestUrl: false },
+      cache: { cacheLocation: 'localStorage' },
+    });
+    await odMsal.initialize();
+    const res = await odMsal.handleRedirectPromise();
+    if (res && res.account) odMsal.setActiveAccount(res.account);
+    const accts = odMsal.getAllAccounts();
+    if (!odMsal.getActiveAccount() && accts.length) odMsal.setActiveAccount(accts[0]);
+    if (!odMsal.getActiveAccount()) { odSetStatus('signedout'); odCountPending(); return; }
+    odSetStatus('ok');
+    /* first successful sign-in on this phone: switch photo saving to OneDrive direct */
+    if (!localStorage.getItem('fb.odMigrated')) {
+      const s = store.settings; s.saveMethod = 'onedrive'; store.settings = s;
+      localStorage.setItem('fb.odMigrated', '1');
+    }
+    if (res && res.account) toast('OneDrive connected');
+    await odToken();                 /* verifies the session; flips to "expired" if it can't renew */
+    odCountPending();
+    odSyncNow();
+  } catch (e) {
+    odErr = 'Sign-in setup problem: ' + (e.errorCode || e.message || e);
+    odSetStatus('unavailable');
+  }
+}
+async function odSignIn() {
+  if (!odMsal) { toast('Sign-in is not ready, check your connection'); return; }
+  const acct = odMsal.getActiveAccount();
+  const req = { scopes: MS_SCOPES };
+  if (acct) req.loginHint = acct.username; else req.prompt = 'select_account';
+  try { await odMsal.loginRedirect(req); } catch (e) { toast('Sign-in failed, try again'); }
+}
+async function odSignOut() {
+  if (!odMsal) return;
+  try { await odMsal.clearCache({ account: odMsal.getActiveAccount() }); } catch (e) { /* ignore */ }
+  odMsal.setActiveAccount(null);
+  odSetStatus('signedout');
+}
+async function odToken() {
+  const acct = odMsal && odMsal.getActiveAccount();
+  if (!acct) return null;
+  try {
+    const r = await odMsal.acquireTokenSilent({ scopes: MS_SCOPES, account: acct });
+    if (odStatus !== 'ok') odSetStatus('ok');
+    return r.accessToken;
+  } catch (e) {
+    if (navigator.onLine) odSetStatus('expired');    /* offline is not "expired" */
+    return null;
+  }
+}
+
+/* --- Graph helper --- */
+async function g(path, opts = {}) {
+  const t = await odToken();
+  if (!t) throw new Error('auth');
+  const r = await fetch(path.startsWith('http') ? path : GRAPH + path,
+    { ...opts, headers: { Authorization: 'Bearer ' + t, ...(opts.headers || {}) } });
+  if (r.status === 401) { odSetStatus('expired'); throw new Error('auth'); }
+  if (!r.ok) { const e = new Error('graph ' + r.status); e.status = r.status; throw e; }
+  return r;
+}
+async function odGetJSON(path) {
+  try { return await (await g(path)).json(); }
+  catch (e) { if (e.status === 404) return null; throw e; }
+}
+const odPutJSON = (path, obj) =>
+  g(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+
+/* Resolve the pasted Shared-folder link into a drive + folder id (cached) */
+async function sharedRoot() {
+  const link = (store.settings.shareLink || '').trim();
+  if (!link) return null;
+  const cached = JSON.parse(localStorage.getItem('fb.sharedRoot') || 'null');
+  if (cached && cached.link === link) return cached;
+  const id = 'u!' + btoa(unescape(encodeURIComponent(link))).replace(/=+$/, '').replace(/\//g, '_').replace(/\+/g, '-');
+  let j;
+  try { j = await (await g('/shares/' + id + '/driveItem?$select=id,name,folder,parentReference,remoteItem')).json(); }
+  catch (e) { e.where = 'share'; throw e; }
+  const driveId = (j.remoteItem && j.remoteItem.parentReference && j.remoteItem.parentReference.driveId) ||
+                  (j.parentReference && j.parentReference.driveId);
+  const itemId = (j.remoteItem && j.remoteItem.id) || j.id;
+  if (!driveId || !itemId) { const e = new Error('link'); e.where = 'share'; throw e; }
+  const root = { link, driveId, itemId };
+  localStorage.setItem('fb.sharedRoot', JSON.stringify(root));
+  return root;
+}
+
+/* --- photos --- */
+async function odQueuePhoto(file, t) {
+  let blob = await scaledBlob(file, 2400);
+  if (blob.size > 3900000) blob = await scaledBlob(file, 1600);   /* simple upload limit is ~4 MB */
+  const kind = t.work ? 'work' : t.alloc === 'Personal' ? 'personal' : 'shared';
+  await odDB.put({ id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob, tries: 0 });
+  odCountPending();
+  odFlush();
+}
+async function odUploadItem(it) {
+  const s = store.settings;
+  let url;
+  if (it.kind === 'shared') {
+    const root = await sharedRoot();
+    if (!root) throw new Error('nolink');
+    url = `/drives/${root.driveId}/items/${root.itemId}:/${enc(joinPath(s.folderShared, it.name))}:/content?@microsoft.graph.conflictBehavior=rename`;
+  } else {
+    const folder = it.kind === 'work' ? s.folderWork : s.folderPersonal;
+    url = `/me/drive/root:/${enc(joinPath(folder, it.name))}:/content?@microsoft.graph.conflictBehavior=rename`;
+  }
+  await g(url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: it.blob });
+}
+async function odFlush() {
+  if (!odSignedIn()) return;
+  if (odFlushing) { odFlushAgain = true; return; }     /* photos queued mid-upload get a second pass */
+  odFlushing = true;
+  try {
+    const items = (await odDB.all()) || [];
+    let sent = 0;
+    for (const it of items) {
+      try { await odUploadItem(it); await odDB.del(it.id); sent++; }
+      catch (e) {
+        if (e.message === 'auth') break;
+        if (e.message === 'nolink') { odErr = 'Paste the Shared folder link in Settings to upload shared receipts.'; continue; }
+        if (e.where === 'share') { odErr = 'The Shared folder link did not work, check it in Settings.'; continue; }
+        it.tries = (it.tries || 0) + 1; it.lastErr = String(e.status || e.message);
+        await odDB.put(it);
+      }
+    }
+    if (sent) { odErr = ''; toast(sent + ' photo' + (sent === 1 ? '' : 's') + ' uploaded to OneDrive'); }
+  } finally {
+    odFlushing = false; odCountPending();
+    if (odFlushAgain) { odFlushAgain = false; odFlush(); }
+  }
+}
+
+/* --- transactions: backup + shared mirror --- */
+async function odRestoreIfEmpty() {
+  if (localStorage.getItem('fb.odRestoreChecked')) return;
+  if (!store.tx.some(t => !t.sample)) {
+    const b = await odGetJSON('/me/drive/root:/' + enc('Family-Budget/App-Backup/' + store.settings.owner + '-all.json') + ':/content');
+    if (b && Array.isArray(b.tx) && b.tx.length) { store.tx = b.tx; toast('Restored ' + b.tx.length + ' receipts from OneDrive'); }
+  }
+  localStorage.setItem('fb.odRestoreChecked', '1');
+}
+async function odSyncTx(force) {
+  if (odSyncing || !odSignedIn()) return;
+  odSyncing = true;
+  try {
+    await odRestoreIfEmpty();
+    const owner = store.settings.owner, now = new Date().toISOString();
+    const all = store.tx.filter(t => !t.sample);
+
+    /* 1) private full backup in your own OneDrive */
+    const hAll = hashStr(JSON.stringify(all));
+    const prevAll = localStorage.getItem('fb.odHashAll');
+    if ((force || prevAll !== hAll) && (all.length || prevAll)) {
+      await odPutJSON('/me/drive/root:/' + enc('Family-Budget/App-Backup/' + owner + '-all.json') + ':/content', { owner, updated: now, tx: all });
+      localStorage.setItem('fb.odHashAll', hAll);
+    }
+
+    /* 2) shared mirror: write my shared entries, read the other person's */
+    const root = await sharedRoot();
+    if (root) {
+      const base = `/drives/${root.driveId}/items/${root.itemId}:/`;
+      const mine = all.filter(t => !t.work && t.alloc !== 'Personal');
+      const hMine = hashStr(JSON.stringify(mine));
+      const prevMine = localStorage.getItem('fb.odHashShared');
+      if ((force || prevMine !== hMine) && (mine.length || prevMine)) {
+        await odPutJSON(base + enc('_sync/tx-' + owner + '.json') + ':/content', { owner, updated: now, tx: mine });
+        localStorage.setItem('fb.odHashShared', hMine);
+      }
+      const other = owner === 'Voytek' ? 'Andrea' : 'Voytek';
+      const data = await odGetJSON(base + enc('_sync/tx-' + other + '.json') + ':/content');
+      if (data && Array.isArray(data.tx))
+        localStorage.setItem('fb.remote', JSON.stringify(data.tx.map(t => ({ ...t, by: other }))));
+    }
+    odLast = now; localStorage.setItem('fb.odLast', odLast);
+    if (!/link|Paste/.test(odErr)) odErr = '';
+  } catch (e) {
+    if (e.message !== 'auth') odErr = e.where === 'share'
+      ? 'The Shared folder link did not work, check it in Settings.'
+      : 'Sync problem (' + (e.status || e.message) + ')';
+  } finally {
+    odSyncing = false; odRenderStatus(); renderAll();
+  }
+}
+function odSchedule() {
+  clearTimeout(odDebounce);
+  odDebounce = setTimeout(() => { odSyncTx(); }, 2500);
+}
+async function odSyncNow() { await odFlush(); await odSyncTx(true); }
+
+/* keep phones in step: on open/return to app, and every minute while visible */
+setInterval(() => { if (!document.hidden && odSignedIn()) { odSyncTx(); odFlush(); } }, 60000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && odSignedIn()) { odSyncTx(); odFlush(); }
+});
+window.addEventListener('online', () => { if (odMsal) { odToken().then(() => { odSyncTx(); odFlush(); }); } });
+window.addEventListener('load', odInit);
 
 /* ---------------- init ---------------- */
 if (!store.settings.onboarded) {
