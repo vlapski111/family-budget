@@ -753,34 +753,35 @@
       </div>
       <div class="settings-row">
         <div>
-          <div class="s-label">Shared folder <button class="i-btn" data-help="hlpShared" aria-label="Help">i</button></div>
+          <div class="s-label">Family folder <button class="i-btn" data-help="hlpShared" aria-label="Help">i</button></div>
           <div class="s-sub" id="odSharedName">Not chosen yet</div>
         </div>
         <button class="mini-btn" data-pick="root">Choose</button>
       </div>
-      <div class="s-help" id="hlpShared" hidden>Point this to the OneDrive folder named <b>Shared</b>. <b>Voytek:</b> tap Choose, then My OneDrive, then Shared. <b>Andrea:</b> tap Choose, then Shared with me, then Shared. Finish with <b>Use this folder</b>.</div>
+      <div class="s-help" id="hlpShared" hidden>Point this to the OneDrive folder named <b>Receipts</b>, the one you and Andrea both use. <b>Voytek:</b> tap Choose, then My OneDrive, Family-Budget, Receipts. <b>Andrea:</b> tap Choose, then pick Receipts under My OneDrive or Shared with me. Finish with <b>Use this folder</b>.</div>
       <details class="s-adv">
         <summary>Or paste a sharing link instead</summary>
         <input type="url" id="odShareLink" placeholder="Paste link" autocomplete="off">
       </details>
       <div class="settings-row">
         <div>
-          <div class="s-label">Shared receipts folder</div>
-          <div class="s-sub">Inside the shared folder</div>
+          <div class="s-label">Joint receipts folder</div>
+          <div class="s-sub">Inside Receipts, normally Inbox</div>
         </div>
         <div class="s-fld"><input class="s-input" type="text" id="odFolderShared" autocomplete="off"><button class="mini-btn" data-pick="shared">Choose</button></div>
       </div>
       <div class="settings-row">
         <div>
           <div class="s-label">Personal receipts folder</div>
-          <div class="s-sub">In your own OneDrive</div>
+          <div class="s-sub">Your private Inbox, in your own OneDrive</div>
         </div>
         <div class="s-fld"><input class="s-input" type="text" id="odFolderPersonal" autocomplete="off"><button class="mini-btn" data-pick="personal">Choose</button></div>
       </div>
+      <div class="s-help" id="hlpWork" hidden>Leave this empty. Work receipts then go to the Joint or Personal folder depending on their allocation, and the PC sorts them into Work-Expenses from the file name.</div>
       <div class="settings-row">
         <div>
-          <div class="s-label">Work receipts folder</div>
-          <div class="s-sub">In your own OneDrive</div>
+          <div class="s-label">Work receipts folder <button class="i-btn" data-help="hlpWork" aria-label="Help">i</button></div>
+          <div class="s-sub">Optional, usually left empty</div>
         </div>
         <div class="s-fld"><input class="s-input" type="text" id="odFolderWork" autocomplete="off"><button class="mini-btn" data-pick="work">Choose</button></div>
       </div>
@@ -973,6 +974,7 @@
   <div class="sheet-actions">
     <button class="btn-primary" id="pkUse">Use this folder</button>
     <button class="btn-ghost" id="pkNew">+ New folder here</button>
+    <button class="btn-ghost" id="pkSkip" hidden>Skip this one</button>
   </div>
 </div>
 
@@ -1138,7 +1140,7 @@ const store = {
   get tx()      { return JSON.parse(localStorage.getItem('fb.tx') || '[]'); },
   set tx(v)     { localStorage.setItem('fb.tx', JSON.stringify(v)); odSchedule(); },
   get settings(){ return Object.assign({ budget: 4000, pbudget: 800, owner: 'Voytek', saveMethod: 'onedrive', defaultAlloc: 'last', lastAlloc: 'Shared', onboarded: false, lockMode: 'none', pinHash: null, credId: null,
-    shareLink: '', folderShared: 'Inbox', folderPersonal: 'Family-Budget/Personal-Inbox', folderWork: 'Family-Budget/Work-Inbox' }, JSON.parse(localStorage.getItem('fb.settings') || '{}')); },
+    shareLink: '', folderShared: 'Inbox', folderPersonal: '', folderWork: '' }, JSON.parse(localStorage.getItem('fb.settings') || '{}')); },
   set settings(v){ localStorage.setItem('fb.settings', JSON.stringify(v)); },
 };
 
@@ -1556,7 +1558,9 @@ function renderSettings() {
   odRenderStatus();
 }
 $('#ownerInput').addEventListener('change', e => {
-  const s = store.settings; s.owner = e.target.value; store.settings = s;
+  const s = store.settings; s.owner = e.target.value;
+  if (s.folderPersonal === defaultPersonalFolder('Voytek') || s.folderPersonal === defaultPersonalFolder('Andrea')) s.folderPersonal = defaultPersonalFolder(s.owner);
+  store.settings = s; renderOdSettings();
   toast('Personal view set to ' + s.owner); renderAll();
 });
 $('#budgetInput').addEventListener('change', e => {
@@ -1567,6 +1571,22 @@ $('#pbudgetInput').addEventListener('change', e => {
 });
 $('#saveMethod').addEventListener('change', e => { const s = store.settings; s.saveMethod = e.target.value; store.settings = s; });
 $('#defaultAlloc').addEventListener('change', e => { const s = store.settings; s.defaultAlloc = e.target.value; store.settings = s; });
+
+/* Receipt folders match the PC layout: Receipts\Inbox (joint) and <Owner>-Private\Inbox (personal). */
+const LEGACY_PERSONAL = 'Family-Budget/Personal-Inbox', LEGACY_WORK = 'Family-Budget/Work-Inbox';
+const defaultPersonalFolder = (owner) => `Family-Budget/${owner}-Private/Inbox`;
+function odFolder(kind) {
+  const s = store.settings;
+  if (kind === 'personal') { const v = (s.folderPersonal || '').trim(); return v && v !== LEGACY_PERSONAL ? v : defaultPersonalFolder(s.owner); }
+  if (kind === 'work') { const v = (s.folderWork || '').trim(); return v && v !== LEGACY_WORK ? v : ''; }
+  return (s.folderShared || '').trim();
+}
+(function migrateFolders() {                 /* earlier builds saved guessed names; replace them once */
+  const s = store.settings; let ch = false;
+  if (!s.folderPersonal || s.folderPersonal === LEGACY_PERSONAL) { s.folderPersonal = defaultPersonalFolder(s.owner); ch = true; }
+  if (s.folderWork === LEGACY_WORK) { s.folderWork = ''; ch = true; }
+  if (ch) store.settings = s;
+})();
 
 /* OneDrive settings fields */
 function renderOdSettings() {
@@ -2333,6 +2353,7 @@ function obNext() { ob.step = Math.min(ob.step + 1, OB_STEPS.length - 1); obRend
 function obFinish() {
   const s = store.settings;
   s.onboarded = true; s.owner = ob.owner; s.lockMode = ob.lockMode;
+  if (s.folderPersonal === defaultPersonalFolder('Voytek') || s.folderPersonal === defaultPersonalFolder('Andrea')) s.folderPersonal = defaultPersonalFolder(ob.owner);
   store.settings = s;
   $('#onboard').hidden = true;
   localStorage.setItem('fb.guide.autostart', '1');     /* new user: show the tour once */
@@ -2528,7 +2549,7 @@ async function sharedRoot() {
 async function odQueuePhoto(file, t) {
   let blob = await scaledBlob(file, 2400);
   if (blob.size > 3900000) blob = await scaledBlob(file, 1600);   /* simple upload limit is ~4 MB */
-  const kind = t.work ? 'work' : t.alloc === 'Personal' ? 'personal' : 'shared';
+  const kind = (t.work && odFolder('work')) ? 'work' : t.alloc === 'Personal' ? 'personal' : 'shared';
   await odDB.put({ id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), name: file.name, kind, blob, tries: 0 });
   odCountPending();
   odFlush();
@@ -2536,12 +2557,12 @@ async function odQueuePhoto(file, t) {
 async function odUploadItem(it) {
   const s = store.settings;
   let url;
-  if (it.kind === 'shared') {
+  if (it.kind === 'shared' || (it.kind === 'work' && !odFolder('work'))) {
     const root = await sharedRoot();
     if (!root) throw new Error('nolink');
-    url = `/drives/${root.driveId}/items/${root.itemId}:/${enc(joinPath(s.folderShared, it.name))}:/content?@microsoft.graph.conflictBehavior=rename`;
+    url = `/drives/${root.driveId}/items/${root.itemId}:/${enc(joinPath(odFolder('shared'), it.name))}:/content?@microsoft.graph.conflictBehavior=rename`;
   } else {
-    const folder = it.kind === 'work' ? s.folderWork : s.folderPersonal;
+    const folder = it.kind === 'work' ? odFolder('work') : odFolder('personal');
     url = `/me/drive/root:/${enc(joinPath(folder, it.name))}:/content?@microsoft.graph.conflictBehavior=rename`;
   }
   await g(url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: it.blob });
@@ -2660,7 +2681,9 @@ if (new URLSearchParams(location.search).has('capture')) {
 /* ================================================================
    OneDrive folder picker (Microsoft Graph) + help toggles
    ================================================================ */
-const pk = { kind: null, mode: null, tab: 'mine', stack: [], items: [] };
+const pk = { kind: null, mode: null, tab: 'mine', stack: [], items: [], chain: false };
+let pkQueue = [];            /* folders still to pick in the guided run */
+let gdReturn = null;         /* guide step to come back to when picking is done */
 
 document.addEventListener('click', e => {
   const h = e.target.closest('.i-btn');
@@ -2689,9 +2712,10 @@ async function pkLoad() {
         .map(o => ({ name: o.x.name || o.r.name, id: o.r.id, driveId: o.r.parentReference && o.r.parentReference.driveId }))
         .filter(r => r.id && r.driveId);
     } else {
-      const j = await (await g(pkChildrenURL(top) + '?$top=200&$select=id,name,folder,parentReference')).json();
-      rows = (j.value || []).filter(x => x.folder)
-        .map(x => ({ name: x.name, id: x.id, driveId: (x.parentReference && x.parentReference.driveId) || top.driveId }));
+      const j = await (await g(pkChildrenURL(top) + '?$top=200&$select=id,name,folder,parentReference,remoteItem')).json();
+      rows = (j.value || []).filter(x => x.folder || (x.remoteItem && x.remoteItem.folder))
+        .map(x => { const r = x.remoteItem || x;
+          return { name: x.name, id: r.id, driveId: (r.parentReference && r.parentReference.driveId) || (x.parentReference && x.parentReference.driveId) || top.driveId }; });
     }
     rows.sort((a, b) => a.name.localeCompare(b.name));
     pk.items = rows;
@@ -2721,13 +2745,14 @@ async function openPicker(kind) {
   $('#pkTabs').hidden = pk.mode !== 'root';
   document.querySelectorAll('#pkTabs button').forEach(b => b.classList.toggle('on', b.dataset.pkTab === 'mine'));
   const T = {
-    root: ['Choose the Shared folder', s => s.owner === 'Voytek' ? 'Open My OneDrive and pick Shared' : 'Open Shared with me and pick Shared'],
-    shared: ['Shared receipts folder', () => 'A folder inside the Shared folder'],
-    personal: ['Personal receipts folder', () => 'In your own OneDrive'],
-    work: ['Work receipts folder', () => 'In your own OneDrive'],
+    root: ['Choose the Receipts folder', s => s.owner === 'Voytek' ? 'Open My OneDrive, Family-Budget, then pick Receipts' : 'Pick Receipts under My OneDrive or Shared with me'],
+    shared: ['Joint receipts folder', () => 'Inside Receipts, pick the folder named Inbox'],
+    personal: ['Personal receipts folder', s => 'In your own OneDrive: Family-Budget, ' + s.owner + '-Private, Inbox'],
+    work: ['Work receipts folder', () => 'Optional. Most people skip this and leave it empty'],
   }[kind];
   $('#pkTitle').textContent = T[0];
-  $('#pkSub').textContent = T[1](store.settings);
+  $('#pkSub').textContent = (pk.chain ? 'Step ' + (2 - pkQueue.length) + ' of 2 · ' : '') + T[1](store.settings);
+  $('#pkSkip').hidden = !pk.chain;
   openSheet($('#odPickSheet'));
   pkLoad();
 }
@@ -2759,7 +2784,21 @@ $('#pkUse').addEventListener('click', () => {
   renderOdSettings(); closeSheets();
   odErr = ''; odRenderStatus(); odSchedule();
   toast(pk.mode === 'root' ? 'Shared folder set' : 'Folder set');
+  setTimeout(pkAfter, 300);
 });
+function pkAfter() {
+  if (pkQueue.length) { openPicker(pkQueue.shift()); return; }
+  pk.chain = false;
+  if (gdReturn) { const r = gdReturn; gdReturn = null; openGuide(r.key, r.step); }
+}
+function pkCancel() {                       /* picker dismissed with X or by tapping outside */
+  if (!$('#odPickSheet').classList.contains('open')) return;
+  pkQueue = []; pk.chain = false;
+  if (gdReturn) { const r = gdReturn; gdReturn = null; setTimeout(() => openGuide(r.key, r.step), 300); }
+}
+$('#odPickSheet').querySelector('[data-close]').addEventListener('click', pkCancel, true);
+$('#backdrop').addEventListener('click', pkCancel, true);
+$('#pkSkip').addEventListener('click', () => { closeSheets(); setTimeout(pkAfter, 300); });
 $('#pkNew').addEventListener('click', async () => {
   const name = (prompt('New folder name:') || '').trim();
   if (!name) return;
@@ -2789,11 +2828,11 @@ const GUIDES = {
   onedrive: { brand: 'ONEDRIVE SETUP', steps: [
     { h: 'Connect OneDrive ☁️', p: 'OneDrive carries your receipt photos to the family PC and lets you and Andrea see each other\'s shared spending. You set it up once on each phone.' },
     { h: 'Sign in', p: 'Tap the button and sign in with your Microsoft account. Accept the permissions screen. Microsoft asks you to reconnect about once a day: when the banner appears, just tap <b>Connect</b>.', act: 'signin', actLabel: 'Sign in now', status: true },
-    { h: 'Choose the Shared folder', pf: () => store.settings.owner === 'Voytek'
-        ? 'In Settings tap <b>Choose</b> next to <b>Shared folder</b>, open <b>My OneDrive</b>, pick <b>Shared</b>, then tap <b>Use this folder</b>. Make sure the folder is shared with Andrea (can edit).'
-        : 'In Settings tap <b>Choose</b> next to <b>Shared folder</b>, open <b>Shared with me</b>, pick <b>Shared</b>, then tap <b>Use this folder</b>.',
+    { h: 'Choose the Receipts folder', pf: () => store.settings.owner === 'Voytek'
+        ? 'Tap the button, open <b>My OneDrive</b>, then <b>Family-Budget</b>, pick <b>Receipts</b> and tap <b>Use this folder</b>. This is the folder you and Andrea both use.'
+        : 'Tap the button, pick <b>Receipts</b> (look under <b>My OneDrive</b> or <b>Shared with me</b>) and tap <b>Use this folder</b>. This is the folder you and Voytek both use.',
       act: 'pickShared', actLabel: 'Choose it now' },
-    { h: 'Choose receipt folders', p: 'Still in Settings, tap <b>Choose</b> next to the Shared, Personal and Work receipt folders. They must match the folders the family PC already reads, so pick the ones you use today.', act: 'pickFolders', actLabel: 'Go to Settings' },
+    { h: 'Choose receipt folders', p: 'Two quick picks. First the <b>Inbox</b> inside Receipts, for joint receipts. Then your <b>private Inbox</b> in your own OneDrive (Family-Budget, then your name followed by Private, then Inbox). Work receipts follow these automatically. You can skip either one.', act: 'pickFolders', actLabel: 'Choose them now' },
     { h: 'All set ✅', p: 'Add a receipt with a photo to test it. The photo uploads straight to OneDrive. You can reopen this guide any time from the bottom of Settings.' },
   ] },
 };
@@ -2840,10 +2879,14 @@ $('#guide').addEventListener('click', e => {
     localStorage.setItem('fb.guide.resume', 'onedrive:2');   /* come back to the next step after Microsoft */
     odSignIn(); return;
   }
-  if (act === 'pickShared') { closeGuide(); goTo('settings'); setTimeout(() => openPicker('root'), 300); return; }
+  if (act === 'pickShared') {
+    gdReturn = { key: gd.key, step: gd.step + 1 };
+    $('#guide').hidden = true; goTo('settings'); setTimeout(() => openPicker('root'), 300); return;
+  }
   if (act === 'pickFolders') {
-    closeGuide(); goTo('settings');
-    setTimeout(() => $('#odCard').scrollIntoView({ behavior: 'smooth' }), 200); return;
+    gdReturn = { key: gd.key, step: gd.step + 1 };
+    pkQueue = ['personal']; pk.chain = true;
+    $('#guide').hidden = true; goTo('settings'); setTimeout(() => openPicker('shared'), 300); return;
   }
   const d = e.target.closest('[data-gd]')?.dataset.gd;
   if (d === 'next') { gd.step++; gdRender(); }
