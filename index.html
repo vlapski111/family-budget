@@ -2811,7 +2811,7 @@ $('#pkUse').addEventListener('click', () => {
   const s = store.settings, names = pk.stack.map(n => n.name);
   if (pk.mode === 'root') {
     const top = pk.stack[pk.stack.length - 1]; if (!top) return;
-    s.sharedPick = { driveId: top.driveId, itemId: top.id, name: top.name };
+    s.sharedPick = { driveId: top.driveId, itemId: top.id, name: top.name, confirmed: true };
     s.shareLink = '';
     localStorage.removeItem('fb.sharedRoot');
   } else if (pk.mode === 'sub') {
@@ -2822,7 +2822,7 @@ $('#pkUse').addEventListener('click', () => {
   store.settings = s;
   renderOdSettings(); closeSheets();
   odErr = ''; odRenderStatus(); odSchedule();
-  toast(pk.mode === 'root' ? 'Shared folder set' : 'Folder set');
+  toast(pk.mode === 'root' ? (/^receipts$/i.test((s.sharedPick || {}).name || '') ? 'Receipts folder set' : 'Folder set (it is not named Receipts)') : 'Folder set');
   setTimeout(pkAfter, 300);
 });
 function pkAfter() {
@@ -2884,23 +2884,37 @@ const suErr = (e) => e && e.message === 'auth' ? 'Sign in again, then run the ch
 
 /* the Receipts folder: saved pick first, then the usual places */
 async function odDetectFamily() {
+  /* 1. the saved pick, but only trusted if it is named Receipts or was chosen by hand in the picker.
+        Older versions told people to pick "Shared", which the PC does not watch. */
+  let saved = null;
   try {
     const r = await sharedRoot();
     if (r) {
       const j = await odGetJSON(`/drives/${r.driveId}/items/${r.itemId}?$select=id,name`);
-      if (j && j.id) return { driveId: r.driveId, itemId: r.itemId, name: j.name || 'Receipts', saved: true };
+      if (j && j.id) {
+        const pick = store.settings.sharedPick || {};
+        saved = { driveId: r.driveId, itemId: r.itemId, name: j.name || pick.name || '', saved: true,
+                  confirmed: !!(pick.confirmed && pick.itemId === r.itemId) };
+        if (/^receipts$/i.test(saved.name) || saved.confirmed) return saved;
+      }
     }
   } catch (e) { if (e.message === 'auth') throw e; }
+  /* 2. look for the real Receipts folder */
   const asRoot = (j) => { const r = j.remoteItem || j;
     return { driveId: (r.parentReference && r.parentReference.driveId) || (j.parentReference && j.parentReference.driveId), itemId: r.id, name: j.name }; };
+  let found = null;
   for (const p of ['Family-Budget/Receipts', 'Receipts']) {
     const j = await odGetJSON('/me/drive/root:/' + enc(p) + '?$select=id,name,folder,parentReference,remoteItem');
-    if (j && (j.folder || (j.remoteItem && j.remoteItem.folder))) { const o = asRoot(j); if (o.driveId && o.itemId) return o; }
+    if (j && (j.folder || (j.remoteItem && j.remoteItem.folder))) { const o = asRoot(j); if (o.driveId && o.itemId) { found = o; break; } }
   }
-  const sw = await odGetJSON('/me/drive/sharedWithMe?$top=100');
-  const hit = ((sw && sw.value) || []).map(x => ({ x, r: x.remoteItem || x }))
-    .find(o => o.r.folder && String(o.x.name || o.r.name).toLowerCase() === 'receipts' && o.r.parentReference && o.r.parentReference.driveId);
-  if (hit) return { driveId: hit.r.parentReference.driveId, itemId: hit.r.id, name: hit.x.name || hit.r.name };
+  if (!found) {
+    const sw = await odGetJSON('/me/drive/sharedWithMe?$top=100');
+    const hit = ((sw && sw.value) || []).map(x => ({ x, r: x.remoteItem || x }))
+      .find(o => o.r.folder && String(o.x.name || o.r.name).toLowerCase() === 'receipts' && o.r.parentReference && o.r.parentReference.driveId);
+    if (hit) found = { driveId: hit.r.parentReference.driveId, itemId: hit.r.id, name: hit.x.name || hit.r.name };
+  }
+  if (found) { if (saved) found.switchedFrom = saved.name; return found; }
+  if (saved) { saved.odd = true; return saved; }   /* nothing better found: flag it, do not build folders in it */
   return null;
 }
 /* make sure Receipts/<rel> exists, creating only what is missing */
@@ -2956,13 +2970,17 @@ async function odRunSetup() {
     set('family', 'run');
     let root = null;
     try { root = await odDetectFamily(); } catch (e) { set('family', 'bad', suErr(e), 'root'); }
-    if (root) {
+    if (root && root.odd) {
+      set('family', 'bad', 'The saved folder is named "' + root.name + '", not Receipts, and the PC only watches Receipts. Tap Choose and pick the Receipts folder.', 'root');
+      root = null;
+    } else if (root) {
       const s = store.settings;
       if (!(s.sharedPick && s.sharedPick.itemId === root.itemId) && !root.saved) {
         s.sharedPick = { driveId: root.driveId, itemId: root.itemId, name: root.name }; s.shareLink = '';
         localStorage.removeItem('fb.sharedRoot'); store.settings = s;
       }
-      set('family', 'ok', root.saved ? 'Using ' + root.name : 'Found it and saved: ' + root.name);
+      set('family', 'ok', root.switchedFrom ? 'Switched from "' + root.switchedFrom + '" to ' + root.name
+        : root.saved ? 'Using ' + root.name : 'Found it and saved: ' + root.name);
     } else if (row('family').st !== 'bad') {
       set('family', 'bad', 'I could not find a folder named Receipts. Tap Choose and pick it (Voytek: My OneDrive, Family-Budget, Receipts. Andrea: under My OneDrive or Shared with me).', 'root');
     }
@@ -2974,8 +2992,8 @@ async function odRunSetup() {
       try {
         const e = await odEnsureSub(root, rel);
         await odTestWrite(`/drives/${root.driveId}`, e.id);
-        set(k, 'ok', `Receipts/${rel} ` + (e.created ? 'created and tested' : 'is ready') + (okText || ''));
-      } catch (er) { set(k, 'bad', 'Receipts/' + rel + ': ' + suErr(er), er.status === 403 ? 'root' : null); }
+        set(k, 'ok', `${root.name}/${rel} ` + (e.created ? 'created and tested' : 'is ready') + (okText || ''));
+      } catch (er) { set(k, 'bad', root.name + '/' + rel + ': ' + suErr(er), er.status === 403 ? 'root' : null); }
     };
     let s = store.settings;
     if (!(s.folderShared || '').trim()) { s.folderShared = 'Inbox'; store.settings = s; }
